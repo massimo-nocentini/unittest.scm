@@ -18,7 +18,9 @@
                                    (values))))
               (apply
                 (car (alist-ref (unittest/testcase-name testcase) methods))
-                testcase args))))
+                testcase args)
+            (when teardown (apply (car teardown) testcase args)))))
+                
 
 	(define-syntax define-sut
           (syntax-rules ()
