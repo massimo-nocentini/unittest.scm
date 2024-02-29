@@ -1,6 +1,6 @@
 
 test:
-	csi test/bootstrap.scm
+	csi -s test/bootstrap.scm
 
 install:
 	chicken-install
