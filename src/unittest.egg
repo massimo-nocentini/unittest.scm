@@ -1,0 +1,7 @@
+
+
+((author "Massimo Nocentini")
+ (synopsis "A unit testing framework, bootstrapped from itself.")
+ (license "MIT")
+ (components 
+    (extension unittest)))

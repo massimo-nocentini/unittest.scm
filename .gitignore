@@ -1,0 +1,7 @@
+src/unittest.build.sh
+src/unittest.import.scm
+src/unittest.import.so
+src/unittest.install.sh
+src/unittest.link
+src/unittest.so
+src/unittest.static.o
