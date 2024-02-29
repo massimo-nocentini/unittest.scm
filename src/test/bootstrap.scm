@@ -2,21 +2,15 @@
 (import unittest)
 
 (define-sut wasrun-sut
-    ((setup tc)         (unittest/testcase-wassetup-set! tc #t))
-    ((test-method tc _) (unittest/testcase-ran-set! tc #t)))
+  ((setup tc)         (unittest/testcase-logcons! tc 'setup))
+  ((test-method tc _) (unittest/testcase-logcons! tc 'test-method)))
 
 (define-sut bootstrap-sut
-    ((setup tc) (lettest ((t 'test-method)) t))
-    ((test-running tc t) 
-                        (assert (not (unittest/testcase-ran t)))
-                        (unittest/testcase-run t wasrun-sut)
-                        (assert (unittest/testcase-ran t)))
-    ((test-setup tc t) 
-                        (unittest/testcase-run t wasrun-sut)
-                        (assert (unittest/testcase-wassetup t))))
+  ((setup tc) (lettest ((t 'test-method)) t))
+  ((test-running tc t)
+     (assert (equal? '() (unittest/testcase-log t)))
+     (unittest/testcase-run t wasrun-sut)
+     (assert (equal? '(test-method setup) (unittest/testcase-log t)))))
 
-
-(lettest ((tr 'test-running)
-          (ts 'test-setup))
-    (unittest/testcase-run tr bootstrap-sut)
-    (unittest/testcase-run ts bootstrap-sut))
+(lettest ((tr 'test-running))
+	 (unittest/testcase-run tr bootstrap-sut))
