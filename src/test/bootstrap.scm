@@ -26,7 +26,7 @@
       (assert-equal '((ran 1) (failed 1)) (unittest/result-summary r)))
   ((test-suite tc _ r)
     (letsuite ((suite (test-running test-failed)))
-      (suite r bootstrap-sut)
+      (unittest/testsuite-run suite r bootstrap-sut)
       (assert-equal '((ran 2) (failed 0)) (unittest/result-summary r))))
 
 )
@@ -34,6 +34,6 @@
 (let ((r (make-unittest/result 0 0))
       (expected '((ran 5) (failed 0))))
     (letsuite ((suite (test-running test-result test-failed test-failed-result test-suite)))
-      (suite r bootstrap-sut)
+      (unittest/testsuite-run suite r bootstrap-sut)
       (assert-equal expected (unittest/result-summary r))
       (pretty-print (unittest/result-summary r))))

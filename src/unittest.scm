@@ -50,10 +50,10 @@
       (syntax-rules ()
         ((_ ((name (method ...)) ...) body ...)
 
-         (letrec ((name (lambda (r sut)
-             (lettest ((method 'method) ...)
-               (unittest/testcase-run method r sut) ...)))...)
-
+         (letrec ((name (lettest ((method 'method) ...) (list method ...))) ...)
             body ...))))
+
+    (define (unittest/testsuite-run suite r sut)
+      (map (lambda (testcase) (unittest/testcase-run testcase r sut)) suite))
 )
 
