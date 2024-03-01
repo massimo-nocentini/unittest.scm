@@ -48,7 +48,7 @@
 
     (define-syntax letsuite
       (syntax-rules ()
-        ((_ ((name (method ...)) ...) body ...)
+        ((_ ((name '(method ...)) ...) body ...)
 
          (letrec ((name (lettest ((method 'method) ...) (list method ...))) ...)
             body ...))))
