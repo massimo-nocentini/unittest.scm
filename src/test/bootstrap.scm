@@ -8,7 +8,7 @@
   ((test-broken tc _) (error 'broken)))
 
 (define-sut bootstrap-sut
-  ((setup tc) (lettest ((t 'test-method)) (values t (make-unittest/result 0 0))))
+  ((setup tc) (lettest ((t 'test-method)) (values t (make-unittest/result 0 '()))))
   ((test-running tc t r)
      (assert-equal '() (unittest/testcase-log t))
      (unittest/testcase-run t r wasrun-sut)
@@ -19,24 +19,20 @@
   ((test-failed tc _ r)
         (lettest ((t 'test-broken))
             (unittest/testcase-run t r wasrun-sut)
-            (assert-equal '((ran 1) (failed 1)) (unittest/result-summary r))))
+            (assert-equal '((ran 1) (failed 1 "
+Error: broken
+")) (unittest/result-summary r))))
   ((test-failed-result tc _ r)    
       (unittest/result-started! r)
-      (unittest/result-failed! r)
-      (assert-equal '((ran 1) (failed 1)) (unittest/result-summary r)))
+      (unittest/result-failed! r 'no-reason)
+      (assert-equal '((ran 1) (failed 1 no-reason)) (unittest/result-summary r)))
   ((test-suite tc _ r)
     (letsuite ((suite '(test-running test-failed)))
       (unittest/testsuite-run suite r bootstrap-sut)
-      (assert-equal '((ran 2) (failed 0)) (unittest/result-summary r))))
-
-)
+      (assert-equal '((ran 2) (failed 0)) (unittest/result-summary r)))))
 
 
-#;(assert-equal (unittest/result-summary (unittest/test-sut bootstrap-sut)))
-
-(let ((r (make-unittest/result 0 0))
-      (expected '((ran 5) (failed 0))))
-    (letsuite ((suite '(test-running test-result test-failed test-failed-result test-suite)))
-      (unittest/testsuite-run suite r bootstrap-sut)
-      (assert-equal expected (unittest/result-summary r))
-      (pretty-print (unittest/result-summary r))))
+(let* ((r (unittest/test-sut bootstrap-sut)) ; do run the tests.
+       (s (unittest/result-summary r)))
+    (assert-equal '((ran 5) (failed 0)) s)
+    (pretty-print s))
