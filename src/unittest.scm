@@ -12,7 +12,7 @@
 
 	(define (unittest/testcase-run testcase result methods)
           (let ((setup (alist-ref 'setup methods))
-		(teardown (alist-ref 'teardown methods))
+		        (teardown (alist-ref 'teardown methods))
                 (testcase-name (unittest/testcase-name testcase)))
             (unittest/result-started! result)
             (let-values ((args (if setup ((car setup) testcase) (values))))
@@ -45,8 +45,7 @@
 	(define (unittest/result-failed! result exn)
 	  (unittest/result-failed-set! result (cons exn (unittest/result-failed result))))
 
-	(define (assert-equal a b)
-          (unless (equal? a b) (signal (unittest/condition-expected-actual a b))))
+	(define (⊦ pred? a b) (unless (pred? a b) (signal (unittest/condition-expected-actual a b))))
 
 	(define-syntax letsuite
 	  (syntax-rules ()
@@ -57,12 +56,13 @@
 	(define (unittest/testsuite-run suite r sut)
 	  (for-each (lambda (testcase) (unittest/testcase-run testcase r sut)) suite))
 
-	(define (unittest/test-sut sut)
+	(define (unittest/✓-sut sut)
 	  (let* ((r (make-unittest/result 0 '()))
-		 (methods (filter (lambda (x) (and (not (eq? (car x) 'setup)) (not (eq? (car x) 'teardown)))) sut))
-		 (s (map (lambda (pair) (lettest ((t (car pair))) t)) methods)))
-            (unittest/testsuite-run s r sut)
-            r))
+		     (methods (filter (lambda (x) (and (not (eq? (car x) 'setup)) (not (eq? (car x) 'teardown)))) sut))
+		     (s (map (lambda (pair) (lettest ((t (car pair))) t)) methods)))
+        (unittest/testsuite-run s r sut)
+        (pretty-print (unittest/result-summary r))
+        r))
 
 	(define (unittest/condition-expected-actual a b)
           (condition `(exn message "assert-equal failed") `(unittest-assert-equal comparison ((expected ,a) (got ,b)))))
