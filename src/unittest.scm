@@ -8,8 +8,7 @@
 	(define (unittest/wasrun name) (make-unittest/testcase name '()))
 
 	(define (unittest/testcase-logcons! testcase msg)
-	  (unittest/testcase-log-set! testcase
-				      (cons msg (unittest/testcase-log testcase))))
+	  (unittest/testcase-log-set! testcase (cons msg (unittest/testcase-log testcase))))
 
 	(define (unittest/testcase-run testcase result methods)
           (let ((setup (alist-ref 'setup methods))
@@ -17,14 +16,10 @@
                 (testcase-name (unittest/testcase-name testcase)))
             (unittest/result-started! result)
             (let-values ((args (if setup ((car setup) testcase) (values))))
-              #;(apply (car (alist-ref (unittest/testcase-name testcase) methods)) testcase args)
-              (handle-exceptions exn 
-				 (begin
-				   #;(pretty-print (condition->list exn))
-				   (unittest/result-failed! result (cons testcase-name
-									 (get-condition-property exn 'exn 'comparison))
-							    #;(call-with-output-string (lambda (port) (print-error-message exn port)))))
-				 (apply (car (alist-ref testcase-name methods)) testcase args))
+              (condition-case (apply (car (alist-ref testcase-name methods)) testcase args)
+                (c (exn unittest-assert-equal) (unittest/result-failed! result (cons testcase-name (get-condition-property c 'unittest-assert-equal 'comparison))))
+                (c (exn) (unittest/result-failed! result (cons testcase-name (get-condition-property c 'exn 'message))))
+                (c () (unittest/result-failed! result (list testcase-name c))))
               (when teardown (apply (car teardown) testcase args)))))
         
 	(define-syntax define-sut
@@ -70,6 +65,6 @@
             r))
 
 	(define (unittest/condition-expected-actual a b)
-          (condition `(exn comparison ((expected ,a) (got ,b)) message "assert-equal failed")))
+          (condition `(exn message "assert-equal failed") `(unittest-assert-equal comparison ((expected ,a) (got ,b)))))
 	)
 
