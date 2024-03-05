@@ -18,7 +18,7 @@
             (let-values ((args (if setup ((car setup) testcase) (values))))
               (condition-case (apply (car (alist-ref testcase-name methods)) testcase args)
                 (c (exn unittest-assert-equal) (unittest/result-failed! result (cons testcase-name (get-condition-property c 'unittest-assert-equal 'comparison))))
-                (c (exn) (unittest/result-failed! result (cons testcase-name (get-condition-property c 'exn 'message))))
+                (c (exn) (unittest/result-failed! result (list testcase-name (get-condition-property c 'exn 'message))))
                 (c () (unittest/result-failed! result (list testcase-name c))))
               (when teardown (apply (car teardown) testcase args)))))
         

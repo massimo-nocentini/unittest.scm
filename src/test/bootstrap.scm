@@ -5,6 +5,7 @@
   ((setup tc)         (unittest/testcase-logcons! tc 'setup))
   ((teardown tc _)    (unittest/testcase-logcons! tc 'teardown))
   ((test-method tc _) (unittest/testcase-logcons! tc 'test-method))
+  ((test-unbound-variable tc _) unbound-variable)
   ((test-broken tc _) (signal (unittest/condition-expected-actual 'useless '_))))
 
 (define-sut bootstrap-sut
@@ -20,6 +21,10 @@
         (lettest ((t 'test-broken))
             (unittest/testcase-run t r wasrun-sut)
             (assert-equal '((ran 1) (failed 1 (test-broken (expected useless) (got _)))) (unittest/result-summary r))))
+  ((test-unbound-variable tc _ r)
+        (lettest ((t 'test-unbound-variable))
+            (unittest/testcase-run t r wasrun-sut)
+            (assert-equal '((ran 1) (failed 1 (test-unbound-variable "unbound variable"))) (unittest/result-summary r))))
   ((test-failed-result tc _ r)
       (unittest/result-started! r)
       (unittest/result-failed! r 'no-reason)
