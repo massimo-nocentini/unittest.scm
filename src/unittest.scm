@@ -46,6 +46,8 @@
 	  (unittest/result-failed-set! result (cons exn (unittest/result-failed result))))
 
 	(define (⊦ pred? a b) (unless (pred? a b) (signal (unittest/condition-expected-actual a b))))
+    (define (⊦= a b) (⊦ equal? a b))
+    (define (⊦≠ a b) (⊦ (complement equal?) a b))
 
 	(define-syntax letsuite
 	  (syntax-rules ()
