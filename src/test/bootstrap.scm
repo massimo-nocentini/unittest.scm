@@ -1,15 +1,20 @@
 
-(import unittest (chicken pretty-print) (chicken condition))
+(import unittest (chicken base) (chicken pretty-print) (chicken condition))
 
-(define-sut wasrun-sut
+(define-suite wasrun-sut
   ((setup tc)         (unittest/testcase-logcons! tc 'setup))
   ((teardown tc _)    (unittest/testcase-logcons! tc 'teardown))
   ((test-method tc _) (unittest/testcase-logcons! tc 'test-method))
   ((test-unbound-variable tc _) unbound-variable)
   ((test-broken tc _) (signal (unittest/condition-expected-actual 'useless '_))))
 
-(define-sut bootstrap-sut
+(define-suite bootstrap-sut
   ((setup tc) (lettest ((t 'test-method)) (values t (make-unittest/result 0 '()))))
+  ((test-alist-ref tc t r) 
+    (let ((alst '((a 3) (b 2))))
+      (⊦= '(3) (alist-ref 'a alst))
+      (⊦= '(2) (alist-ref 'b alst))
+      (⊦= #f (alist-ref 'c alst))))
   ((test-running tc t r)
      (⊦= '() (unittest/testcase-log t))
      (unittest/testcase-run t r wasrun-sut)
@@ -35,4 +40,4 @@
       (unittest/testsuite-run suite r bootstrap-sut)
       (⊦= '((ran 2) (failed 0)) (unittest/result-summary r)))))
 
-(unittest/✓-sut bootstrap-sut)
+(unittest/✓ bootstrap-sut)
