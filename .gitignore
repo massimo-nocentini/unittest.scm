@@ -5,3 +5,4 @@ src/unittest.install.sh
 src/unittest.link
 src/unittest.so
 src/unittest.static.o
+src/test/learning
