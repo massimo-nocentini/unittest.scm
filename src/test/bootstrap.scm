@@ -40,4 +40,5 @@
       (unittest/testsuite-run suite r bootstrap-sut)
       (⊦= '((ran 2) (failed 0)) (unittest/result-summary r)))))
 
-(unittest/✓ bootstrap-sut)
+(⊦= '((ran 7) (failed 0)) 
+  (unittest/result-summary (unittest/✓ bootstrap-sut)))
