@@ -22,7 +22,8 @@
 						(cons testcase-name (get-condition-property c 'unittest-assert-equal 'comparison))))
                 (c (exn) 
 					(unittest/result-failed! result 
-						(list testcase-name (get-condition-property c 'exn 'message))))
+						(list testcase-name (call-with-output-string 
+												(lambda (port) (print-error-message c port))))))
                 (c () (unittest/result-failed! result (list testcase-name c))))
               (when teardown (apply (car teardown) testcase args)))))
         

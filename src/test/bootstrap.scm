@@ -5,7 +5,7 @@
   ((setup tc)         (unittest/testcase-logcons! tc 'setup))
   ((teardown tc _)    (unittest/testcase-logcons! tc 'teardown))
   ((test-method tc _) (unittest/testcase-logcons! tc 'test-method))
-  ((test-unbound-variable tc _) unbound-variable)
+  ((test-unbound-variable tc _) unbound-v)
   ((test-broken tc _) (signal (unittest/condition-expected-actual 'useless '_))))
 
 (define-suite bootstrap-sut
@@ -29,7 +29,7 @@
   ((test-unbound-variable tc _ r)
         (lettest ((t 'test-unbound-variable))
             (unittest/testcase-run t r wasrun-sut)
-            (⊦= '((ran 1) (failed 1 (test-unbound-variable "unbound variable")))
+            (⊦= '((ran 1) (failed 1 (test-unbound-variable "\nError: unbound variable: unbound-v\n")))
                 (unittest/result-summary r))))
   ((test-failed-result tc _ r)
       (unittest/result-started! r)
