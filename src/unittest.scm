@@ -53,6 +53,8 @@
 	(define (⊦ pred? a b) (unless (pred? a b) (signal (unittest/condition-expected-actual a b))))
     (define (⊦= a b) (⊦ equal? a b))
     (define (⊦≠ a b) (⊦ (complement equal?) a b))
+	(define (⊨ a) (⊦= #t a))
+	(define (⊭ a) (⊦= #f a))
 
 	(define-syntax letsuite
 	  (syntax-rules ()
@@ -73,6 +75,16 @@
 
 	(define (unittest/condition-expected-actual a b)
           (condition `(exn message "assert-equal failed") `(unittest-assert-equal comparison ((expected ,a) (got ,b)))))
+
+	(define-syntax ⊦⧳
+		(syntax-rules ()
+			((_ ((exn ...) ...) body ...)
+			 (condition-case (begin body ...)
+			 	((exn ...) (void)) ...
+				))))
+
+				#;(c () (signal (condition '(exn message "⊦⧳ uncaught condition.")
+										`(uncaught-condition ,c))))
 
 )
 
