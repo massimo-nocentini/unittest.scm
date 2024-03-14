@@ -1,6 +1,6 @@
 
 
-(import unittest (chicken base) (chicken pretty-print) (chicken condition) (chicken foreign) (chicken gc))
+(import unittest scheme (chicken base) (chicken pretty-print) (chicken condition) (chicken foreign) (chicken gc))
 
 
 (define-suite learning-suite
@@ -14,6 +14,8 @@
                     (⊦= 2 (my-strlen (cons 1 '())))
                     (⊦= 2 (my-strlen (cons 1 (cons 2 (cons 3 '())))))
                     (⊦= 11 (my-strlen "hello world"))))
+    ((test-null-eq? _) (⊨ (eq? '() '())))
+    #;((test-null-car _) (⊦⧳ ((exn)) (car (list))))
 
 )
 
