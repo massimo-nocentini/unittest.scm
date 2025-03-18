@@ -1,90 +1,190 @@
 
 (module unittest *
 
-	(import scheme srfi-1 (chicken base) (chicken condition) (chicken pretty-print) (chicken port))
+  (import scheme (chicken base) (chicken condition) (chicken pretty-print) (chicken port) (chicken string) srfi-1 sxml-transforms srfi-19)
 
-	(define-record unittest/testcase name log)
+  (define highlight-version "11.11.1")
 
-	(define (unittest/wasrun name) (make-unittest/testcase name '()))
+  (define (sxml-tree title . body) 
+    `((html (@ (xmlns "http://www.w3.org/1999/xhtml")
+               (xml:lang "en") 
+               (lang "en"))
+            (head
+              (meta (@ (name "viewport") (content "width=device-width,initial-scale=1")))
+              (link (@ (rel "stylesheet") 
+                       (href "https://www.w3schools.com/w3css/4/w3.css") 
+                       #;(href "https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css") 
+                       #;(href "https://classless.de/classless.css") 
+                       #;(href "https://www.w3.org/StyleSheets/Core/Steely") 
+                       (type "text/css")))
+              #;(link (@ (rel "stylesheet") 
+                         (href "https://www.w3schools.com/lib/w3-theme-blue-grey.css") 
+                         (type "text/css")))
+              (link (@ (rel "stylesheet") 
+                       (href "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/styles/default.min.css") 
+                       (type "text/css")))
+              (style "code, pre, tt, kbd, samp, .w3-code { font-family: Monaco, Courier, monospace; }"
+                     "body { font-family: 'Lucida Sans', sans-serif; }")
+              (script (@ (src "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/highlight.min.js")))
+              ,@(map (lambda (lang) 
+                       `(script (@ (src "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/languages/" ,lang ".min.js")))) 
+                  '(scheme python))
+              (script "hljs.highlightAll();")
+              (title ,title))
+            (body (@ (class "w3-container")) ,@body)
+	    (hr)
+            (footer (@ (class "w3-container"))
+                    (small
+                      (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/"))
+                         (img (@ (alt "Creative Commons License") (style "border-width:0")
+                                 (src "https://mirrors.creativecommons.org/presskit/icons/cc.svg"))))
+                      (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/"))
+                         (img (@ (alt "Creative Commons License") (style "border-width:0")
+                                 (src "https://mirrors.creativecommons.org/presskit/icons/by.svg"))))
+                      (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/"))
+                         (img (@ (alt "Creative Commons License") (style "border-width:0")
+                                 (src "https://mirrors.creativecommons.org/presskit/icons/sa.svg"))))
+                      (br)
+                      (p "This work is licensed under a "
+                         (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/")) 
+                            "Creative Commons Attribution-ShareAlike 4.0 International License"))
+                      (p (small ,(date->string (current-date)))))))))
 
-	(define (unittest/testcase-logcons! testcase msg)
-	  (unittest/testcase-log-set! testcase (cons msg (unittest/testcase-log testcase))))
+  (define sxml-handler-container (lambda (tag body) `(div (@ (class "w3-container")) ,@body)))
 
-	(define (unittest/testcase-run testcase result methods)
-          (let ((setup (alist-ref 'setup methods))
-		        (teardown (alist-ref 'teardown methods))
-                (testcase-name (unittest/testcase-name testcase)))
-            (unittest/result-started! result)
-            (let-values ((args (if setup ((car setup) testcase) (values))))
-              (condition-case (apply (car (alist-ref testcase-name methods)) testcase args)
-                (c (exn unittest-assert-equal) 
-					(unittest/result-failed! result 
-						(cons testcase-name (get-condition-property c 'unittest-assert-equal 'comparison))))
-                (c (exn) 
-					(unittest/result-failed! result 
-						(list testcase-name (call-with-output-string 
-												(lambda (port) (print-error-message c port))))))
-                (c () (unittest/result-failed! result (list testcase-name c))))
-              (when teardown (apply (car teardown) testcase args)))))
-        
-	(define-syntax define-suite
-          (syntax-rules ()
-            ((_ sutname ((casename formal ...) body ...) ...)
-             (define sutname `((casename ,(lambda (formal ...) body ...)) ...)))))
+  (define sxml-handler-code/scheme
+    (lambda (tag body)
+      (let ((expr (cons 'begin (cdr body))))
+        `(div (@ (class "w3-card w3-round"))
+              (header (@ (class "w3-container w3-border w3-round w3-light-gray")) "Scheme")
+              (div (@ (class "w3-container"))
+                   (p "The S-expression")
+                   (pre
+                     (code (@ (class "w3-code w3-border w3-round language-scheme"))
+                           ,(call-with-output-string (lambda (p) 
+						       (pretty-print 
+							 (if (eq? 1 (length (cdr body))) (cadr body) (cdr body)) 
+							 p))))))
+              ,(if (car body)
+                   `(div (@ (class "w3-container"))
+                         "evaluates to"
+                         (pre (code (@ (class "language-scheme w3-code w3-border w3-round"))
+                                    ,(call-with-output-string (lambda (p) (pretty-print (eval expr) p))))))
+                   "")))))
 
-	(define-syntax lettest
-          (syntax-rules ()
-            ((_ ((test nameexp) ...) body ...)
-             (let ((test (unittest/wasrun nameexp)) ...) body ...))))
+  (define sxml-handler-cite/a (lambda (tag body) `(cite (a (@ (href ,(car body))) ,@(cdr body)))))
 
-	(define-record unittest/result ran failed)
+  (define (SXML->file! tree filename)
+    (with-output-to-file (conc filename ".html")
+      (lambda ()
+        (display "<!doctype html>")
+        (SXML->HTML
+          (pre-post-order*
+            tree
+            `((container . ,sxml-handler-container)
+              (code/scheme . ,sxml-handler-code/scheme)
+              (cite/a . ,sxml-handler-cite/a)
+              ,@alist-conv-rules*))))))
 
-	(define (unittest/result-summary result)
-	  `((ran ,(unittest/result-ran result))
-            (failed ,(length (unittest/result-failed result))
-		    ,@(unittest/result-failed result))))
+  (define-record unittest/testcase name log)
 
-	(define (unittest/result-started! result)
-	  (unittest/result-ran-set! result (add1 (unittest/result-ran result))))
+  (define (unittest/wasrun name) (make-unittest/testcase name '()))
 
-	(define (unittest/result-failed! result exn)
-	  (unittest/result-failed-set! result (cons exn (unittest/result-failed result))))
+  (define (unittest/testcase-logcons! testcase msg)
+    (unittest/testcase-log-set! testcase (cons msg (unittest/testcase-log testcase))))
 
-	(define (⊦ pred? a b) (unless (pred? a b) (signal (unittest/condition-expected-actual a b))))
-    (define (⊦= a b) (⊦ equal? a b))
-    (define (⊦≠ a b) (⊦ (complement equal?) a b))
-	(define (⊨ a) (⊦= #t a))
-	(define (⊭ a) (⊦= #f a))
+  (define (unittest/testcase-run testcase result methods)
+    (let ((setup (alist-ref 'setup methods))
+          (teardown (alist-ref 'teardown methods))
+          (testcase-name (unittest/testcase-name testcase)))
+      (unittest/result-started! result)
+      (let-values ((args (if setup ((car setup) testcase) (values))))
+        (condition-case (apply (car (alist-ref testcase-name methods)) testcase args)
+          (c (exn unittest-assert-equal) 
+             (unittest/result-failed! result 
+                                      (cons testcase-name (get-condition-property c 'unittest-assert-equal 'comparison))))
+          (c (exn)
+             (unittest/result-failed! result 
+                                      (list testcase-name (call-with-output-string
+                                                            (lambda (port) (print-error-message c port))))))
+          (c () (unittest/result-failed! result (list testcase-name c))))
+        (when teardown (apply (car teardown) testcase args)))))
 
-	(define-syntax letsuite
-	  (syntax-rules ()
-            ((_ ((name '(method ...)) ...) body ...)
-             (letrec ((name (lettest ((method 'method) ...) (list method ...))) ...)
-               body ...))))
+  (define-syntax define-suite
+    (syntax-rules (doc)
+      ((_ sutname (doc dexpr ...) body ...)
+       (define-suite sutname ((sxml) `((h1 (@ (class "w3-h1")) "Test Suite: " sutname) dexpr ... (hr))) body ...))
+      ((_ sutname ((casename formal ...) body ...) ...)
+       (define sutname `((casename ,(lambda (formal ...) body ...)) ...)))))
 
-	(define (unittest/testsuite-run suite r sut)
-	  (for-each (lambda (testcase) (unittest/testcase-run testcase r sut)) suite))
+  (define-syntax lettest
+    (syntax-rules ()
+      ((_ ((test nameexp) ...) body ...)
+       (let ((test (unittest/wasrun nameexp)) ...) body ...))))
 
-	(define (unittest/✓ sut)
-	  (let* ((r (make-unittest/result 0 '()))
-		     (methods (filter (lambda (x) (and (not (eq? (car x) 'setup)) (not (eq? (car x) 'teardown)))) sut))
-		     (s (map (lambda (pair) (lettest ((t (car pair))) t)) methods)))
-        (unittest/testsuite-run s r sut)
-        (pretty-print (unittest/result-summary r))
-        r))
+  (define-record unittest/result ran failed)
 
-	(define (unittest/condition-expected-actual a b)
-          (condition `(exn message "assert-equal failed") `(unittest-assert-equal comparison ((expected ,a) (got ,b)))))
+  (define (unittest/result-summary result)
+    `((ran ,(unittest/result-ran result))
+      (failed ,(length (unittest/result-failed result))
+              ,@(unittest/result-failed result))))
 
-	(define-syntax ⊦⧳
-		(syntax-rules ()
-			((_ ((exn ...) ...) body ...)
-			 (condition-case (begin body ...)
-			 	((exn ...) (void)) ...
-				))))
+  (define (unittest/result-started! result)
+    (unittest/result-ran-set! result (add1 (unittest/result-ran result))))
 
-				#;(c () (signal (condition '(exn message "⊦⧳ uncaught condition.")
-										`(uncaught-condition ,c))))
+  (define (unittest/result-failed! result exn)
+    (unittest/result-failed-set! result (cons exn (unittest/result-failed result))))
 
-)
+  (define (⊦ pred? a b) (unless (pred? a b) (signal (unittest/condition-expected-actual a b))))
+  (define (⊦= a b) (⊦ equal? a b))
+  (define (⊦≠ a b) (⊦ (complement equal?) a b))
+  (define (⊨ a) (⊦= #t a))
+  (define (⊭ a) (⊦= #f a))
+
+  (define-syntax letsuite
+    (syntax-rules ()
+      ((_ ((name '(method ...)) ...) body ...)
+       (letrec ((name (lettest ((method 'method) ...) (list method ...))) ...)
+         body ...))))
+
+  (define (unittest/testsuite-run suite r sut)
+    (for-each (lambda (testcase) (unittest/testcase-run testcase r sut)) suite))
+
+  (define (unittest/✓ sut)
+    (let* ((r (make-unittest/result 0 '()))
+           (F (lambda (x)
+                (let ((name (car x)))
+                  (and (not (eq? name 'setup)) 
+                       (not (eq? name 'teardown))
+                       (not (eq? name 'sxml))))))
+           (methods (filter F sut))
+           (s (map (lambda (pair) (lettest ((t (car pair))) t)) methods)))
+      (unittest/testsuite-run s r sut)
+      (let ((res (unittest/result-summary r)))
+        (if (eq? (caar sut) 'sxml)
+            (SXML->file! (sxml-tree 'sut `(,@((car (alist-ref 'sxml sut))) (code/scheme #f ,res))) "sut")
+            (pretty-print res))
+        r)))
+
+  (define (unittest/condition-expected-actual a b)
+    (condition `(exn message "assert-equal failed") `(unittest-assert-equal comparison ((expected ,a) (got ,b)))))
+
+  (define-syntax ⊦⧳
+    (syntax-rules ()
+      ((_ ((exn ...) ...) body ...)
+       (condition-case (begin body ...)
+         ((exn ...) (void)) ...
+         ))))
+
+  #;(c () (signal (condition '(exn message "⊦⧳ uncaught condition.")
+                             `(uncaught-condition ,c))))
+
+  )
+
+
+
+
+
+
+
 

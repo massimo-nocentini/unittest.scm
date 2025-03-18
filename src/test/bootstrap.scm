@@ -10,6 +10,10 @@
 
 (define-suite bootstrap-sut
 
+  (doc 
+    '(p "some doc here.") 
+    '(p "another"))
+
   ((setup tc) (lettest ((t 'test-method)) (values t (make-unittest/result 0 '()))))
 
   ((test-running tc t r)

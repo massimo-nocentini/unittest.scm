@@ -4,5 +4,5 @@ test:
 	cd test && csc learning.scm && ./learning
 
 install:
-	chicken-install
+	chicken-install -sudo
 
