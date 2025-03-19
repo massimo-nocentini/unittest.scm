@@ -10,14 +10,9 @@
 
 (define-suite bootstrap-sut 
 
-  #;((doc r) (let* ((fh (open-input-file "./unittest.scm"))
-                  (sxml `((p "hello")
-                          (code/scheme #f ,(read fh)))))
-             (close-input-port fh)
-             sxml))
-
   ((doc r) `((p "This test suite drove the implementation of the unittest framework itself.") 
 	     (code/scheme-file "./unittest.scm")))
+
   ((setup tc) (lettest ((t 'test-method)) (values t (make-unittest/result 0 '()))))
 
   ((test-running tc t r)

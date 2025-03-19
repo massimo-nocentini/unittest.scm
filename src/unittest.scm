@@ -110,8 +110,10 @@
 	   (teardown (alist-ref 'teardown methods))
 	   (testcase-name (unittest/testcase-name testcase)))
       (unittest/result-started! result)
-      (let-values ((args (if setup ((car setup) testcase) (values))))
-        (condition-case (apply (car (alist-ref testcase-name methods)) testcase args)
+      (let-values ((args (if setup ((car setup) testcase) (values)))
+		   ((f code) (apply values (alist-ref testcase-name methods))))
+        ;(condition-case (apply (car (alist-ref testcase-name methods)) testcase args)
+        (condition-case (apply f testcase args)
           (c (exn unittest-assert-equal) 
              (unittest/result-failed! result 
                                       (cons testcase-name (get-condition-property c 'unittest-assert-equal 'comparison))))
@@ -120,12 +122,15 @@
                                       (list testcase-name (call-with-output-string
                                                             (lambda (port) (print-error-message c port))))))
           (c () (unittest/result-failed! result (list testcase-name c))))
-        (when teardown (apply (car teardown) testcase args)))))
+        (when teardown (apply (car teardown) testcase args))
+	`((h2 (code ,testcase-name))
+	  (code/scheme ,code)))))
 
   (define-syntax define-suite
     (syntax-rules ()
       ((_ sutname ((casename formal ...) body ...) ...)
-       (define sutname `(sutname (casename ,(lambda (formal ...) body ...)) ...)))))
+       (define sutname `(sutname (casename ,(lambda (formal ...) body ...) 
+					   ,(quote (define (casename formal ...) body ...))) ...)))))
 
   (define-syntax lettest
     (syntax-rules ()
@@ -158,7 +163,9 @@
          body ...))))
 
   (define (unittest/testsuite-run suite r sut)
-    (for-each (lambda (testcase) (unittest/testcase-run testcase r sut)) suite))
+    (map (lambda (testcase) 
+	   (unittest/testcase-run testcase r sut)) 
+	 suite))
 
   (define (unittest/✓ sut)
     (let* ((r (make-unittest/result 0 '()))
@@ -171,15 +178,16 @@
                        (not (eq? name 'doc))))))
            (methods (filter F sut-methods))
            (s (map (lambda (pair) (lettest ((t (car pair))) t)) methods)))
-      (unittest/testsuite-run s r sut)
-      (let ((res (unittest/result-summary r))
+      (let ((docs (unittest/testsuite-run s r sut))
+	    (res (unittest/result-summary r))
 	    (sxml (alist-ref 'doc sut-methods)))
         (if sxml
             (SXML->file! (sxml-tree sut-name 
 				    `((h1 (code ,sut-name) " test suite") 
 				      (code/scheme ,res)
 				      ,@((car sxml) r)
-				      ))
+				      (hr)
+				      ,@docs))
 			 sut-name)
             (pretty-print res))
         r)))
