@@ -40,7 +40,7 @@
                   '(scheme python))
               (script "hljs.highlightAll();")
               (title ,title))
-            (body (@ (class "w3-content") (style "max-width:61.8%")) ,@body)
+            (body (@ (class "w3-content") (style "max-width:61.8%")) ,@body
 	    (hr)
             (footer (@ (class "w3-container w3-center"))
                     (small
@@ -58,32 +58,28 @@
                          (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/")) 
                             "Creative Commons Attribution-ShareAlike 4.0 International License")
 			 (br)
-			 (small ,(date->string (current-date)))))))))
+			 (small ,(date->string (current-date))))))))))
 
   (define sxml-handler-container (lambda (tag body) `(div (@ (class "w3-container")) ,@body)))
 
+  (define sxml-handler-code/lang
+    (lambda (tag body)
+      (let ((lang (car body))
+	    (code (cdr body)))
+        `(div (@ (class "w3-card w3-round"))
+              (header (@ (class "w3-container w3-border w3-round w3-light-gray w3-right")) ,lang " code")
+              (div (@ (class "w3-container")) 
+		   (pre 
+		     (code (@ (class "w3-code w3-border w3-round language-" ,lang)) ,code)))))))
+
   (define sxml-handler-code/scheme
     (lambda (tag body)
-      (let* ((whole-expr (cdr body))
-	     (expr (if (eq? (length whole-expr) 1) (car whole-expr) (cons 'begin whole-expr))))
-        `(div (@ (class "w3-card w3-round"))
-              (header (@ (class "w3-container w3-border w3-round w3-light-gray")) "Scheme")
-              (div (@ (class "w3-container"))
-                   (p "The S-expression")
-                   (pre
-                     (code (@ (class "w3-code w3-border w3-round language-scheme"))
-                           ,(call-with-output-string (lambda (p) (pretty-print expr p))))))
-              ,(if (car body)
-                   `(div (@ (class "w3-container"))
-                         "evaluates to"
-                         (pre (code (@ (class "language-scheme w3-code w3-border w3-round"))
-                                    ,(call-with-output-string (lambda (p) (pretty-print (eval expr) p))))))
-                   "")))))
+      (let* ((expr (if (eq? (length body) 1) (car body) (cons 'begin body))))
+	(sxml-handler-code/lang 'code/lang (list 'scheme (call-with-output-string (lambda (p) (pretty-print expr p))))))))
 
   (define sxml-handler-code/scheme-file
     (lambda (tag body)
-      (sxml-handler-code/scheme 'code/scheme 
-				(list (car body) (with-input-from-file (cadr body) (lambda () (read)))))))
+      (sxml-handler-code/scheme 'code/scheme (list (with-input-from-file (car body) (lambda () (read)))))))
 
   (define sxml-handler-cite/a (lambda (tag body) `(cite (a (@ (href ,(car body))) ,@(cdr body)))))
 
@@ -95,6 +91,7 @@
           (pre-post-order*
             tree
             `((container . ,sxml-handler-container)
+              (code/lang . ,sxml-handler-code/lang)
               (code/scheme . ,sxml-handler-code/scheme)
               (code/scheme-file . ,sxml-handler-code/scheme-file)
               (cite/a . ,sxml-handler-cite/a)
@@ -179,16 +176,17 @@
 	    (sxml (alist-ref 'doc sut-methods)))
         (if sxml
             (SXML->file! (sxml-tree sut-name 
-				    `((h1 "Test Suite: " (code ,sut-name)) 
+				    `((h1 (code ,sut-name) " test suite") 
+				      (code/scheme ,res)
 				      ,@((car sxml) r)
-				      (hr)
-				      (code/scheme #f ,res)))
+				      ))
 			 sut-name)
             (pretty-print res))
         r)))
 
   (define (unittest/condition-expected-actual a b)
-    (condition `(exn message "assert-equal failed") `(unittest-assert-equal comparison ((expected ,a) (got ,b)))))
+    (condition `(exn message "assert-equal failed") 
+	       `(unittest-assert-equal comparison ((expected ,a) (got ,b)))))
 
   (define-syntax ⊦⧳
     (syntax-rules ()

@@ -17,7 +17,7 @@
              sxml))
 
   ((doc r) `((p "This test suite drove the implementation of the unittest framework itself.") 
-	     (code/scheme-file #f "./unittest.scm")))
+	     (code/scheme-file "./unittest.scm")))
   ((setup tc) (lettest ((t 'test-method)) (values t (make-unittest/result 0 '()))))
 
   ((test-running tc t r)
