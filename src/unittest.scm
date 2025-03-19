@@ -104,27 +104,34 @@
   (define (unittest/testcase-logcons! testcase msg)
     (unittest/testcase-log-set! testcase (cons msg (unittest/testcase-log testcase))))
 
-  (define (unittest/testcase-run testcase result sut)
-    (let* ((methods (cdr sut))
-	   (setup (alist-ref 'setup methods))
-	   (teardown (alist-ref 'teardown methods))
-	   (testcase-name (unittest/testcase-name testcase)))
-      (unittest/result-started! result)
-      (let-values ((args (if setup ((car setup) testcase) (values)))
-		   ((f code) (apply values (alist-ref testcase-name methods))))
-        ;(condition-case (apply (car (alist-ref testcase-name methods)) testcase args)
-        (condition-case (apply f testcase args)
-          (c (exn unittest-assert-equal) 
-             (unittest/result-failed! result 
-                                      (cons testcase-name (get-condition-property c 'unittest-assert-equal 'comparison))))
-          (c (exn)
-             (unittest/result-failed! result 
-                                      (list testcase-name (call-with-output-string
-                                                            (lambda (port) (print-error-message c port))))))
-          (c () (unittest/result-failed! result (list testcase-name c))))
-        (when teardown (apply (car teardown) testcase args))
-	`((h2 (code ,testcase-name))
-	  (code/scheme ,code)))))
+(define (unittest/testcase-run testcase result sut)
+  (let* ((methods (cdr sut))
+	 (setup (alist-ref 'setup methods))
+	 (teardown (alist-ref 'teardown methods))
+	 (testcase-name (unittest/testcase-name testcase)))
+    (unittest/result-started! result)
+    (let-values ((args (if setup ((car setup) testcase) (values)))
+		 ((f code) (apply values (alist-ref testcase-name methods))))
+      (let* ((witness (gensym))
+	     (v (condition-case (apply f testcase args)
+				(c (exn unittest-assert-equal) 
+				   (begin 
+				     (unittest/result-failed! 
+				       result (cons testcase-name (get-condition-property c 'unittest-assert-equal 'comparison)))
+				     witness))
+				(c (exn)
+				   (begin
+				     (unittest/result-failed! 
+				       result (list testcase-name (call-with-output-string
+								    (lambda (port) (print-error-message c port)))))
+				     witness))
+				(c () (begin
+					(unittest/result-failed! result (list testcase-name c))
+					witness)))))
+	(when teardown (apply (car teardown) testcase args))
+	`((h2 (code ,testcase-name) ": " ,(if (eq? v witness) '(span (@ (class "w3-text-red")) fail) '(span (@ (class "w3-text-green")) pass)))
+	  ,@(if (pair? v) v '())
+	  (code/scheme ,code))))))
 
   (define-syntax define-suite
     (syntax-rules ()

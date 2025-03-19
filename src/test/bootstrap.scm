@@ -18,7 +18,8 @@
   ((test-running tc t r)
    (⊦= '() (unittest/testcase-log t))
    (unittest/testcase-run t r wasrun-sut)
-   (⊦= '(teardown test-method setup) (unittest/testcase-log t)))
+   (⊦= '(teardown test-method setup) (unittest/testcase-log t))
+   `((p "hello")))
 
   ((test-result tc t r)
    (unittest/testcase-run t r wasrun-sut)
