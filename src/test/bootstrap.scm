@@ -8,60 +8,66 @@
   ((test-unbound-variable tc _) unbound-v)
   ((test-broken tc _) (signal (unittest/condition-expected-actual 'useless '_))))
 
-(define-suite bootstrap-sut
+(define-suite bootstrap-sut 
 
-  (doc 
-    '(p "some doc here.") 
-    '(p "another"))
+  #;((doc r) (let* ((fh (open-input-file "./unittest.scm"))
+                  (sxml `((p "hello")
+                          (code/scheme #f ,(read fh)))))
+             (close-input-port fh)
+             sxml))
 
+  ((doc r) `((p "This test suite drove the implementation of the unittest framework itself.") 
+	     (code/scheme-file #f "./unittest.scm")))
   ((setup tc) (lettest ((t 'test-method)) (values t (make-unittest/result 0 '()))))
 
   ((test-running tc t r)
-     (⊦= '() (unittest/testcase-log t))
-     (unittest/testcase-run t r wasrun-sut)
-     (⊦= '(teardown test-method setup) (unittest/testcase-log t)))
+   (⊦= '() (unittest/testcase-log t))
+   (unittest/testcase-run t r wasrun-sut)
+   (⊦= '(teardown test-method setup) (unittest/testcase-log t)))
 
   ((test-result tc t r)
-        (unittest/testcase-run t r wasrun-sut)
-        (⊦= '((ran 1) (failed 0)) (unittest/result-summary r)))
+   (unittest/testcase-run t r wasrun-sut)
+   (⊦= '((ran 1) (failed 0)) (unittest/result-summary r)))
 
   ((test-failed tc _ r)
-        (lettest ((t 'test-broken))
+   (lettest ((t 'test-broken))
             (unittest/testcase-run t r wasrun-sut)
             (⊦= '((ran 1) (failed 1 (test-broken (expected useless) (got _)))) 
-                (unittest/result-summary r))))
+                  (unittest/result-summary r))))
 
   ((test-unbound-variable tc _ r)
-        (lettest ((t 'test-unbound-variable))
+   (lettest ((t 'test-unbound-variable))
             (unittest/testcase-run t r wasrun-sut)
             (⊦= '((ran 1) (failed 1 (test-unbound-variable "\nError: unbound variable: unbound-v\n")))
-                (unittest/result-summary r))))
+                  (unittest/result-summary r))))
 
   ((test-failed-result tc _ r)
-      (unittest/result-started! r)
-      (unittest/result-failed! r 'no-reason)
-      (⊦= '((ran 1) (failed 1 no-reason)) (unittest/result-summary r)))
+   (unittest/result-started! r)
+   (unittest/result-failed! r 'no-reason)
+   (⊦= '((ran 1) (failed 1 no-reason)) (unittest/result-summary r)))
 
   ((test-suite tc _ r)
-    (letsuite ((suite '(test-running test-failed)))
-      (unittest/testsuite-run suite r bootstrap-sut)
-      (⊦= '((ran 2) (failed 0)) (unittest/result-summary r))))
+   (letsuite ((suite '(test-running test-failed)))
+             (unittest/testsuite-run suite r bootstrap-sut)
+             (⊦= '((ran 2) (failed 0)) (unittest/result-summary r))))
 
   ((test-⊨ tc _ _) (⊨ #t))
 
   ((test-⊭ tc _ _) (⊭ #f))
 
   ((test-should-signal tc _ _)
-    (⊦⧳ ((exn)) (signal (condition '(exn message "useless"))))
-    (⊦⧳ ((exn-a)) (signal (condition '(exn-a message "useless"))))
-    (⊦⧳ ((exn) (exn-a)) (signal (condition '(exn-a message "useless"))))
-    (condition-case (⊦⧳ ((exn)) (signal (condition '(exn-a message "useless"))))
-      ((exn-a) (void)))
-    (condition-case (⊦⧳ ((exn)) (signal 99))
-      (() (void)))
-    (⊦⧳ () 99))
-)
+   (⊦⧳ ((exn)) (signal (condition '(exn message "useless"))))
+   (⊦⧳ ((exn-a)) (signal (condition '(exn-a message "useless"))))
+   (⊦⧳ ((exn) (exn-a)) (signal (condition '(exn-a message "useless"))))
+   (condition-case (⊦⧳ ((exn)) (signal (condition '(exn-a message "useless"))))
+     ((exn-a) (void)))
+   (condition-case (⊦⧳ ((exn)) (signal 99))
+     (() (void)))
+   (⊦⧳ () 99))
+  )
 
 (unittest/✓ bootstrap-sut)
 #;(⊦= '((ran 8) (failed 0)) 
-  (unittest/result-summary (unittest/✓ bootstrap-sut)))
+        (unittest/result-summary (unittest/✓ bootstrap-sut)))
+
+

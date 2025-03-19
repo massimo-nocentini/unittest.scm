@@ -1,11 +1,20 @@
 
 (module unittest *
 
-  (import scheme (chicken base) (chicken condition) (chicken pretty-print) (chicken port) (chicken string) srfi-1 sxml-transforms srfi-19)
+  (import 
+    scheme 
+    (chicken base) 
+    (chicken condition) 
+    (chicken pretty-print) 
+    (chicken port) 
+    (chicken string) 
+    srfi-1 
+    srfi-19
+    sxml-transforms)
 
   (define highlight-version "11.11.1")
 
-  (define (sxml-tree title . body) 
+  (define (sxml-tree title . body)
     `((html (@ (xmlns "http://www.w3.org/1999/xhtml")
                (xml:lang "en") 
                (lang "en"))
@@ -23,17 +32,17 @@
               (link (@ (rel "stylesheet") 
                        (href "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/styles/default.min.css") 
                        (type "text/css")))
-              (style "code, pre, tt, kbd, samp, .w3-code { font-family: Monaco, Courier, monospace; }"
-                     "body { font-family: 'Lucida Sans', sans-serif; }")
+              (style "code, pre, tt, kbd, samp, .w3-code { font-family: Monaco, 'Ubuntu Mono', monospace; }"
+                     "html, body, h1, h2, h3, h4, h5, h6 { font-family: 'Lucida Sans', 'Ubuntu Sans', sans-serif; }")
               (script (@ (src "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/highlight.min.js")))
               ,@(map (lambda (lang) 
                        `(script (@ (src "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/languages/" ,lang ".min.js")))) 
                   '(scheme python))
               (script "hljs.highlightAll();")
               (title ,title))
-            (body (@ (class "w3-container")) ,@body)
+            (body (@ (class "w3-content") (style "max-width:61.8%")) ,@body)
 	    (hr)
-            (footer (@ (class "w3-container"))
+            (footer (@ (class "w3-container w3-center"))
                     (small
                       (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/"))
                          (img (@ (alt "Creative Commons License") (style "border-width:0")
@@ -47,30 +56,34 @@
                       (br)
                       (p "This work is licensed under a "
                          (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/")) 
-                            "Creative Commons Attribution-ShareAlike 4.0 International License"))
-                      (p (small ,(date->string (current-date)))))))))
+                            "Creative Commons Attribution-ShareAlike 4.0 International License")
+			 (br)
+			 (small ,(date->string (current-date)))))))))
 
   (define sxml-handler-container (lambda (tag body) `(div (@ (class "w3-container")) ,@body)))
 
   (define sxml-handler-code/scheme
     (lambda (tag body)
-      (let ((expr (cons 'begin (cdr body))))
+      (let* ((whole-expr (cdr body))
+	     (expr (if (eq? (length whole-expr) 1) (car whole-expr) (cons 'begin whole-expr))))
         `(div (@ (class "w3-card w3-round"))
               (header (@ (class "w3-container w3-border w3-round w3-light-gray")) "Scheme")
               (div (@ (class "w3-container"))
                    (p "The S-expression")
                    (pre
                      (code (@ (class "w3-code w3-border w3-round language-scheme"))
-                           ,(call-with-output-string (lambda (p) 
-						       (pretty-print 
-							 (if (eq? 1 (length (cdr body))) (cadr body) (cdr body)) 
-							 p))))))
+                           ,(call-with-output-string (lambda (p) (pretty-print expr p))))))
               ,(if (car body)
                    `(div (@ (class "w3-container"))
                          "evaluates to"
                          (pre (code (@ (class "language-scheme w3-code w3-border w3-round"))
                                     ,(call-with-output-string (lambda (p) (pretty-print (eval expr) p))))))
                    "")))))
+
+  (define sxml-handler-code/scheme-file
+    (lambda (tag body)
+      (sxml-handler-code/scheme 'code/scheme 
+				(list (car body) (with-input-from-file (cadr body) (lambda () (read)))))))
 
   (define sxml-handler-cite/a (lambda (tag body) `(cite (a (@ (href ,(car body))) ,@(cdr body)))))
 
@@ -83,6 +96,7 @@
             tree
             `((container . ,sxml-handler-container)
               (code/scheme . ,sxml-handler-code/scheme)
+              (code/scheme-file . ,sxml-handler-code/scheme-file)
               (cite/a . ,sxml-handler-cite/a)
               ,@alist-conv-rules*))))))
 
@@ -93,10 +107,11 @@
   (define (unittest/testcase-logcons! testcase msg)
     (unittest/testcase-log-set! testcase (cons msg (unittest/testcase-log testcase))))
 
-  (define (unittest/testcase-run testcase result methods)
-    (let ((setup (alist-ref 'setup methods))
-          (teardown (alist-ref 'teardown methods))
-          (testcase-name (unittest/testcase-name testcase)))
+  (define (unittest/testcase-run testcase result sut)
+    (let* ((methods (cdr sut))
+	   (setup (alist-ref 'setup methods))
+	   (teardown (alist-ref 'teardown methods))
+	   (testcase-name (unittest/testcase-name testcase)))
       (unittest/result-started! result)
       (let-values ((args (if setup ((car setup) testcase) (values))))
         (condition-case (apply (car (alist-ref testcase-name methods)) testcase args)
@@ -111,11 +126,9 @@
         (when teardown (apply (car teardown) testcase args)))))
 
   (define-syntax define-suite
-    (syntax-rules (doc)
-      ((_ sutname (doc dexpr ...) body ...)
-       (define-suite sutname ((sxml) `((h1 (@ (class "w3-h1")) "Test Suite: " sutname) dexpr ... (hr))) body ...))
+    (syntax-rules ()
       ((_ sutname ((casename formal ...) body ...) ...)
-       (define sutname `((casename ,(lambda (formal ...) body ...)) ...)))))
+       (define sutname `(sutname (casename ,(lambda (formal ...) body ...)) ...)))))
 
   (define-syntax lettest
     (syntax-rules ()
@@ -152,17 +165,25 @@
 
   (define (unittest/✓ sut)
     (let* ((r (make-unittest/result 0 '()))
+	   (sut-name (car sut))
+	   (sut-methods (cdr sut))
            (F (lambda (x)
                 (let ((name (car x)))
                   (and (not (eq? name 'setup)) 
                        (not (eq? name 'teardown))
-                       (not (eq? name 'sxml))))))
-           (methods (filter F sut))
+                       (not (eq? name 'doc))))))
+           (methods (filter F sut-methods))
            (s (map (lambda (pair) (lettest ((t (car pair))) t)) methods)))
       (unittest/testsuite-run s r sut)
-      (let ((res (unittest/result-summary r)))
-        (if (eq? (caar sut) 'sxml)
-            (SXML->file! (sxml-tree 'sut `(,@((car (alist-ref 'sxml sut))) (code/scheme #f ,res))) "sut")
+      (let ((res (unittest/result-summary r))
+	    (sxml (alist-ref 'doc sut-methods)))
+        (if sxml
+            (SXML->file! (sxml-tree sut-name 
+				    `((h1 "Test Suite: " (code ,sut-name)) 
+				      ,@((car sxml) r)
+				      (hr)
+				      (code/scheme #f ,res)))
+			 sut-name)
             (pretty-print res))
         r)))
 
