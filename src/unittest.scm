@@ -21,7 +21,7 @@
             (head
               (meta (@ (name "viewport") (content "width=device-width,initial-scale=1")))
               (link (@ (rel "stylesheet") 
-                       (href "https://www.w3schools.com/w3css/4/w3.css") 
+                       (href "https://www.w3schools.com/w3css/5/w3.css") 
                        #;(href "https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css") 
                        #;(href "https://classless.de/classless.css") 
                        #;(href "https://www.w3.org/StyleSheets/Core/Steely") 
@@ -81,6 +81,14 @@
     (lambda (tag body)
       (sxml-handler-code/scheme 'code/scheme (list (with-input-from-file (car body) (lambda () (read)))))))
 
+  (define sxml-handler-di
+    (lambda (tag body)
+      (let ((dt (car body))
+	    (dd (cdr body)))
+	`(div (@ (class "w3-row")) 
+	      (dt (@ (class "w3-bold")) ,dt)
+	      (dd ,@dd)))))
+
   (define sxml-handler-cite/a (lambda (tag body) `(cite (a (@ (href ,(car body))) ,@(cdr body)))))
 
   (define (SXML->HTML->file! tree filename)
@@ -90,12 +98,13 @@
         (SXML->HTML
           (pre-post-order*
             tree
-            `((container . ,sxml-handler-container)
-              (code/lang . ,sxml-handler-code/lang)
-              (code/scheme . ,sxml-handler-code/scheme)
-              (code/scheme-file . ,sxml-handler-code/scheme-file)
-              (cite/a . ,sxml-handler-cite/a)
-              ,@alist-conv-rules*))))))
+            (append `((container . ,sxml-handler-container)
+		      (code/lang . ,sxml-handler-code/lang)
+		      (code/scheme . ,sxml-handler-code/scheme)
+		      (code/scheme-file . ,sxml-handler-code/scheme-file)
+		      (cite/a . ,sxml-handler-cite/a)
+		      (di . ,sxml-handler-di))
+		    alist-conv-rules*))))))
 
   (define-record unittest/testcase name log)
 
