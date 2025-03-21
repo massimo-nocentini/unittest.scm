@@ -84,10 +84,10 @@
   (define sxml-handler-di
     (lambda (tag body)
       (let ((dt (car body))
-	    (dd (cdr body)))
-	`(div (@ (class "w3-row")) 
-	      (dt (@ (class "w3-bold")) ,dt)
-	      (dd ,@dd)))))
+            (dd (cdr body)))
+        `(div (@ (class "w3-row")) 
+              (dt (@ (class "w3-bold")) ,dt)
+              (dd ,@dd)))))
 
   (define sxml-handler-cite/a (lambda (tag body) `(cite (a (@ (href ,(car body))) ,@(cdr body)))))
 
@@ -96,15 +96,16 @@
       (lambda ()
         (display "<!doctype html>")
         (SXML->HTML
-          (pre-post-order*
-            tree
-            (append `((container . ,sxml-handler-container)
-		      (code/lang . ,sxml-handler-code/lang)
-		      (code/scheme . ,sxml-handler-code/scheme)
-		      (code/scheme-file . ,sxml-handler-code/scheme-file)
-		      (cite/a . ,sxml-handler-cite/a)
-		      (di . ,sxml-handler-di))
-		    alist-conv-rules*))))))
+            (pre-post-order*
+              tree
+              (append `((container . ,sxml-handler-container)
+                        (code/lang . ,sxml-handler-code/lang)
+                        (code/scheme . ,sxml-handler-code/scheme)
+                        (code/scheme-file . ,sxml-handler-code/scheme-file)
+                        (cite/a . ,sxml-handler-cite/a)
+                        (di . ,sxml-handler-di))
+                      alist-conv-rules*
+		      #;universal-conversion-rules*))))))
 
   (define-record unittest/testcase name log)
 
@@ -139,10 +140,10 @@
                             witness)))))
           (when teardown (apply (car teardown) testcase args))
           `((h2 (code ,testcase-name) 
-		": " 
-		,(if (eq? v witness) 
-		   '(span (@ (class "w3-text-red")) fail) 
-		   '(span (@ (class "w3-text-green")) pass)))
+                ": " 
+                ,(if (eq? v witness) 
+                     '(span (@ (class "w3-text-red")) fail) 
+                     '(span (@ (class "w3-text-green")) pass)))
             ,@(if (pair? v) v '())
             (code/scheme ,code))))))
 
@@ -226,6 +227,7 @@
                              `(uncaught-condition ,c))))
 
   )
+
 
 
 
