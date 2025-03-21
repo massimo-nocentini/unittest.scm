@@ -3,4 +3,5 @@
 ((author "Massimo Nocentini")
  (synopsis "A unit testing framework, bootstrapped from itself.")
  (license "MIT")
+ (dependencies srfi-1 srfi-19 sxml-transforms)
  (components (extension unittest)))

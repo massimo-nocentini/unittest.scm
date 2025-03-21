@@ -1,6 +1,6 @@
 
 test:
-	csi -s test/bootstrap.scm
+	cd test && csi -s bootstrap.scm
 	cd test && csc learning.scm && ./learning
 
 install:

@@ -1,7 +1,7 @@
 
 (module unittest *
 
-  (import 
+  (import
     scheme 
     (chicken base) 
     (chicken condition) 
@@ -14,7 +14,7 @@
 
   (define highlight-version "11.11.1")
 
-  (define (sxml-tree title . body)
+  (define (sxml-tree title body)
     `((html (@ (xmlns "http://www.w3.org/1999/xhtml")
                (xml:lang "en") 
                (lang "en"))
@@ -41,41 +41,41 @@
               (script "hljs.highlightAll();")
               (title ,title))
             (body (@ (class "w3-content") (style "max-width:61.8%")) ,@body
-	    (hr)
-            (footer (@ (class "w3-container w3-center"))
-                    (small
-                      (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/"))
-                         (img (@ (alt "Creative Commons License") (style "border-width:0")
-                                 (src "https://mirrors.creativecommons.org/presskit/icons/cc.svg"))))
-                      (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/"))
-                         (img (@ (alt "Creative Commons License") (style "border-width:0")
-                                 (src "https://mirrors.creativecommons.org/presskit/icons/by.svg"))))
-                      (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/"))
-                         (img (@ (alt "Creative Commons License") (style "border-width:0")
-                                 (src "https://mirrors.creativecommons.org/presskit/icons/sa.svg"))))
-                      (br)
-                      (p "This work is licensed under a "
-                         (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/")) 
-                            "Creative Commons Attribution-ShareAlike 4.0 International License")
-			 (br)
-			 (small ,(date->string (current-date))))))))))
+                  (hr)
+                  (footer (@ (class "w3-container w3-center"))
+                          (small
+                            (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/"))
+                               (img (@ (alt "Creative Commons License") (style "border-width:0")
+                                       (src "https://mirrors.creativecommons.org/presskit/icons/cc.svg"))))
+                            (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/"))
+                               (img (@ (alt "Creative Commons License") (style "border-width:0")
+                                       (src "https://mirrors.creativecommons.org/presskit/icons/by.svg"))))
+                            (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/"))
+                               (img (@ (alt "Creative Commons License") (style "border-width:0")
+                                       (src "https://mirrors.creativecommons.org/presskit/icons/sa.svg"))))
+                            (br)
+                            (p "This work is licensed under a "
+                               (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/")) 
+                                  "Creative Commons Attribution-ShareAlike 4.0 International License")
+                               (br)
+                               (small ,(date->string (current-date))))))))))
 
   (define sxml-handler-container (lambda (tag body) `(div (@ (class "w3-container")) ,@body)))
 
   (define sxml-handler-code/lang
     (lambda (tag body)
       (let ((lang (car body))
-	    (code (cdr body)))
+            (code (cdr body)))
         `(div (@ (class "w3-card w3-round"))
               (header (@ (class "w3-container w3-border w3-round w3-light-gray w3-right")) ,lang " code")
               (div (@ (class "w3-container")) 
-		   (pre 
-		     (code (@ (class "w3-code w3-border w3-round language-" ,lang)) ,code)))))))
+                   (pre
+                     (code (@ (class "w3-code w3-border w3-round language-" ,lang)) ,code)))))))
 
   (define sxml-handler-code/scheme
     (lambda (tag body)
       (let* ((expr (if (eq? (length body) 1) (car body) (cons 'begin body))))
-	(sxml-handler-code/lang 'code/lang (list 'scheme (call-with-output-string (lambda (p) (pretty-print expr p))))))))
+        (sxml-handler-code/lang 'code/lang (list 'scheme (call-with-output-string (lambda (p) (pretty-print expr p))))))))
 
   (define sxml-handler-code/scheme-file
     (lambda (tag body)
@@ -83,7 +83,7 @@
 
   (define sxml-handler-cite/a (lambda (tag body) `(cite (a (@ (href ,(car body))) ,@(cdr body)))))
 
-  (define (SXML->file! tree filename)
+  (define (SXML->HTML->file! tree filename)
     (with-output-to-file (conc filename ".html")
       (lambda ()
         (display "<!doctype html>")
@@ -104,40 +104,44 @@
   (define (unittest/testcase-logcons! testcase msg)
     (unittest/testcase-log-set! testcase (cons msg (unittest/testcase-log testcase))))
 
-(define (unittest/testcase-run testcase result sut)
-  (let* ((methods (cdr sut))
-	 (setup (alist-ref 'setup methods))
-	 (teardown (alist-ref 'teardown methods))
-	 (testcase-name (unittest/testcase-name testcase)))
-    (unittest/result-started! result)
-    (let-values ((args (if setup ((car setup) testcase) (values)))
-		 ((f code) (apply values (alist-ref testcase-name methods))))
-      (let* ((witness (gensym))
-	     (v (condition-case (apply f testcase args)
-				(c (exn unittest-assert-equal) 
-				   (begin 
-				     (unittest/result-failed! 
-				       result (cons testcase-name (get-condition-property c 'unittest-assert-equal 'comparison)))
-				     witness))
-				(c (exn)
-				   (begin
-				     (unittest/result-failed! 
-				       result (list testcase-name (call-with-output-string
-								    (lambda (port) (print-error-message c port)))))
-				     witness))
-				(c () (begin
-					(unittest/result-failed! result (list testcase-name c))
-					witness)))))
-	(when teardown (apply (car teardown) testcase args))
-	`((h2 (code ,testcase-name) ": " ,(if (eq? v witness) '(span (@ (class "w3-text-red")) fail) '(span (@ (class "w3-text-green")) pass)))
-	  ,@(if (pair? v) v '())
-	  (code/scheme ,code))))))
+  (define (unittest/testcase-run testcase result sut)
+    (let* ((methods (cdr sut))
+           (setup (alist-ref 'setup methods))
+           (teardown (alist-ref 'teardown methods))
+           (testcase-name (unittest/testcase-name testcase)))
+      (unittest/result-started! result)
+      (let-values ((args (if setup ((car setup) testcase) (values)))
+                   ((f code) (apply values (alist-ref testcase-name methods))))
+        (let* ((witness (gensym))
+               (v (condition-case (apply f testcase args)
+                    (c (exn unittest-assert-equal) 
+                       (begin
+                         (unittest/result-failed!
+                           result (cons testcase-name (get-condition-property c 'unittest-assert-equal 'comparison)))
+                         witness))
+                    (c (exn)
+                       (begin
+                         (unittest/result-failed!
+                           result (list testcase-name (call-with-output-string
+                                                        (lambda (port) (print-error-message c port)))))
+                         witness))
+                    (c () (begin
+                            (unittest/result-failed! result (list testcase-name c))
+                            witness)))))
+          (when teardown (apply (car teardown) testcase args))
+          `((h2 (code ,testcase-name) 
+		": " 
+		,(if (eq? v witness) 
+		   '(span (@ (class "w3-text-red")) fail) 
+		   '(span (@ (class "w3-text-green")) pass)))
+            ,@(if (pair? v) v '())
+            (code/scheme ,code))))))
 
   (define-syntax define-suite
     (syntax-rules ()
       ((_ sutname ((casename formal ...) body ...) ...)
        (define sutname `(sutname (casename ,(lambda (formal ...) body ...) 
-					   ,(quote (define (casename formal ...) body ...))) ...)))))
+                                           ,(quote (define (casename formal ...) body ...))) ...)))))
 
   (define-syntax lettest
     (syntax-rules ()
@@ -171,13 +175,13 @@
 
   (define (unittest/testsuite-run suite r sut)
     (map (lambda (testcase) 
-	   (unittest/testcase-run testcase r sut)) 
-	 suite))
+           (unittest/testcase-run testcase r sut)) 
+      suite))
 
   (define (unittest/✓ sut)
     (let* ((r (make-unittest/result 0 '()))
-	   (sut-name (car sut))
-	   (sut-methods (cdr sut))
+           (sut-name (car sut))
+           (sut-methods (cdr sut))
            (F (lambda (x)
                 (let ((name (car x)))
                   (and (not (eq? name 'setup)) 
@@ -186,22 +190,21 @@
            (methods (filter F sut-methods))
            (s (map (lambda (pair) (lettest ((t (car pair))) t)) methods)))
       (let ((docs (unittest/testsuite-run s r sut))
-	    (res (unittest/result-summary r))
-	    (sxml (alist-ref 'doc sut-methods)))
-        (if sxml
-            (SXML->file! (sxml-tree sut-name 
-				    `((h1 (code ,sut-name) " test suite") 
-				      (code/scheme ,res)
-				      ,@((car sxml) r)
-				      (hr)
-				      ,@docs))
-			 sut-name)
-            (pretty-print res))
+            (res (unittest/result-summary r))
+            (sxml (alist-ref 'doc sut-methods)))
+        (SXML->HTML->file! (sxml-tree sut-name 
+                                      `((h1 (code ,sut-name) " test suite") 
+                                        (code/scheme ,res)
+                                        ,@(if sxml ((car sxml) r) '())
+                                        (hr)
+                                        ,@docs))
+                           (symbol-append 'testsuite- sut-name))
+        (pretty-print res)
         r)))
 
   (define (unittest/condition-expected-actual a b)
     (condition `(exn message "assert-equal failed") 
-	       `(unittest-assert-equal comparison ((expected ,a) (got ,b)))))
+               `(unittest-assert-equal comparison ((expected ,a) (got ,b)))))
 
   (define-syntax ⊦⧳
     (syntax-rules ()
@@ -214,6 +217,8 @@
                              `(uncaught-condition ,c))))
 
   )
+
+
 
 
 
