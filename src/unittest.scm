@@ -91,21 +91,23 @@
 
   (define sxml-handler-cite/a (lambda (tag body) `(cite (a (@ (href ,(car body))) ,@(cdr body)))))
 
+  (define conversion-rules* (append `((container . ,sxml-handler-container)
+                                      (code/lang . ,sxml-handler-code/lang)
+                                      (code/scheme . ,sxml-handler-code/scheme)
+                                      (code/scheme-file . ,sxml-handler-code/scheme-file)
+                                      (cite/a . ,sxml-handler-cite/a)
+                                      (di . ,sxml-handler-di))
+                                    alist-conv-rules*
+                                    #;universal-conversion-rules*))
+
   (define (SXML->HTML->file! tree filename)
     (with-output-to-file (conc filename ".html")
       (lambda ()
         (display "<!doctype html>")
         (SXML->HTML
-            (pre-post-order*
-              tree
-              (append `((container . ,sxml-handler-container)
-                        (code/lang . ,sxml-handler-code/lang)
-                        (code/scheme . ,sxml-handler-code/scheme)
-                        (code/scheme-file . ,sxml-handler-code/scheme-file)
-                        (cite/a . ,sxml-handler-cite/a)
-                        (di . ,sxml-handler-di))
-                      alist-conv-rules*
-		      #;universal-conversion-rules*))))))
+          (pre-post-order*
+            tree
+            conversion-rules*)))))
 
   (define-record unittest/testcase name log)
 
@@ -123,29 +125,40 @@
       (let-values ((args (if setup ((car setup) testcase) (values)))
                    ((f code) (apply values (alist-ref testcase-name methods))))
         (let* ((witness (gensym))
-               (v (condition-case (apply f testcase args)
+	       (no-outsrt "")
+	       (pair (condition-case (let* ((res (void))
+					    (outstr (with-output-to-string (lambda () (set! res (apply f testcase args))))))
+				       (cons res outstr))
                     (c (exn unittest-assert-equal) 
                        (begin
                          (unittest/result-failed!
                            result (cons testcase-name (get-condition-property c 'unittest-assert-equal 'comparison)))
-                         witness))
+                         (cons witness no-outsrt)))
                     (c (exn)
                        (begin
                          (unittest/result-failed!
                            result (list testcase-name (call-with-output-string
                                                         (lambda (port) (print-error-message c port)))))
-                         witness))
+                         (cons witness no-outsrt)))
                     (c () (begin
                             (unittest/result-failed! result (list testcase-name c))
-                            witness)))))
+                            (cons witness no-outsrt)))))
+	       (v (car pair))
+	       (outstr (cdr pair)))
           (when teardown (apply (car teardown) testcase args))
-          `((h2 (code ,testcase-name) 
+          `((h2 (code ,testcase-name)
                 ": " 
                 ,(if (eq? v witness) 
                      '(span (@ (class "w3-text-red")) fail) 
                      '(span (@ (class "w3-text-green")) pass)))
             ,@(if (pair? v) v '())
-            (code/scheme ,code))))))
+            (code/scheme ,code)
+	    ,@(if (not (equal? outstr no-outsrt)) 
+		`((div (@ (class "w3-container"))
+		       (p "Captured stdout:")
+		       (pre #;(@ (class "w3-container"))
+			    (code (@ (class "w3-code w3-round")) ,outstr))))
+		'()))))))
 
   (define-syntax define-suite
     (syntax-rules ()
@@ -227,6 +240,7 @@
                              `(uncaught-condition ,c))))
 
   )
+
 
 
 
