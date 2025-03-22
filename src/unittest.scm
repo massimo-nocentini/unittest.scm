@@ -68,9 +68,8 @@
             (code (cdr body)))
         `(div (@ (class "w3-card w3-round"))
               (header (@ (class "w3-container w3-border w3-round w3-light-gray w3-right")) ,lang " code")
-              (div (@ (class "w3-container")) 
-                   (pre
-                     (code (@ (class "w3-code w3-border w3-round language-" ,lang)) ,code)))))))
+	      (pre (@ (class "w3-container"))
+		   (code (@ (class "w3-code w3-round language-" ,lang)) ,code))))))
 
   (define sxml-handler-code/scheme
     (lambda (tag body)
@@ -155,9 +154,8 @@
             (code/scheme ,code)
 	    ,@(if (not (equal? outstr no-outsrt)) 
 		`((div (@ (class "w3-container"))
-		       (p "Captured stdout:")
-		       (pre #;(@ (class "w3-container"))
-			    (code (@ (class "w3-code w3-round")) ,outstr))))
+		       (p "Captured stdout:"
+		       (pre (code (@ (class "w3-code w3-round")) ,outstr)))))
 		'()))))))
 
   (define-syntax define-suite
