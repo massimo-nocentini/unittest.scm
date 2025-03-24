@@ -90,11 +90,31 @@
 
   (define sxml-handler-cite/a (lambda (tag body) `(cite (a (@ (href ,(car body))) ,@(cdr body)))))
 
+  (define sxml-handler-math/display
+    (lambda (tag body)
+      `(math (@ (display "block")) ,@body)))
+
+  (define sxml-handler-math/frac
+    (lambda (tag body)
+      `(mfrac ,(car body) ,(cadr body))))
+
+  (define sxml-handler-math/m
+    (lambda (tag body)
+      (let ((v (car body)))
+	(cond
+	  ((number? v) `(mn ,v))
+	  ((symbol? v) `(mi ,v))
+	  ((pair? v) `(mrow ,@(map (lambda (w) (sxml-handler-math/m 'm (list w))) v)))
+	  (else `(mtext ,v))))))
+
   (define conversion-rules* (append `((container . ,sxml-handler-container)
                                       (code/lang . ,sxml-handler-code/lang)
                                       (code/scheme . ,sxml-handler-code/scheme)
                                       (code/scheme-file . ,sxml-handler-code/scheme-file)
                                       (cite/a . ,sxml-handler-cite/a)
+                                      (displaymath . ,sxml-handler-math/display)
+                                      (m . ,sxml-handler-math/m)
+                                      (frac . ,sxml-handler-math/frac)
                                       (di . ,sxml-handler-di))
                                     alist-conv-rules*
                                     #;universal-conversion-rules*))
