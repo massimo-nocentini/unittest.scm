@@ -40,7 +40,8 @@
                   '(scheme python))
               (script "hljs.highlightAll();")
               (title ,title))
-            (body (@ (class "w3-content") (style "max-width:61.8%")) ,@body
+            (body (@ (class "w3-content") (style "max-width:61.8%"))
+                  ,@body
                   (hr)
                   (footer (@ (class "w3-container w3-center"))
                           (small
@@ -68,8 +69,8 @@
             (code (cdr body)))
         `(div (@ (class "w3-card w3-round"))
               (header (@ (class "w3-container w3-border w3-round w3-light-gray w3-right")) ,lang " code")
-	      (pre (@ (class "w3-container"))
-		   (code (@ (class "w3-code w3-round language-" ,lang)) ,code))))))
+              (pre (@ (class "w3-container"))
+                   (code (@ (class "w3-code w3-round language-" ,lang)) ,code))))))
 
   (define sxml-handler-code/scheme
     (lambda (tag body)
@@ -101,11 +102,11 @@
   (define sxml-handler-math/m
     (lambda (tag body)
       (let ((v (car body)))
-	(cond
-	  ((number? v) `(mn ,v))
-	  ((symbol? v) `(mi ,v))
-	  ((pair? v) `(mrow ,@(map (lambda (w) (sxml-handler-math/m 'm (list w))) v)))
-	  (else `(mtext ,v))))))
+        (cond
+          ((number? v) `(mn ,v))
+          ((symbol? v) `(mi ,v))
+          ((pair? v) `(mrow ,@(map (lambda (w) (sxml-handler-math/m 'm (list w))) v)))
+          (else `(mtext ,v))))))
 
   (define conversion-rules* (append `((container . ,sxml-handler-container)
                                       (code/lang . ,sxml-handler-code/lang)
@@ -116,17 +117,18 @@
                                       (m . ,sxml-handler-math/m)
                                       (frac . ,sxml-handler-math/frac)
                                       (di . ,sxml-handler-di))
-                                    alist-conv-rules*
-                                    #;universal-conversion-rules*))
+                                    alist-conv-rules*))
 
   (define (SXML->HTML->file! tree filename)
     (with-output-to-file (conc filename ".html")
       (lambda ()
         (display "<!doctype html>")
-        (SXML->HTML
+        (SRV:send-reply
           (pre-post-order*
-            tree
-            conversion-rules*)))))
+            (pre-post-order*
+              tree
+              conversion-rules*)
+            universal-conversion-rules*)))))
 
   (define-record unittest/testcase name log)
 
@@ -144,26 +146,26 @@
       (let-values ((args (if setup ((car setup) testcase) (values)))
                    ((f code) (apply values (alist-ref testcase-name methods))))
         (let* ((witness (gensym))
-	       (no-outsrt "")
-	       (pair (condition-case (let* ((res (void))
-					    (outstr (with-output-to-string (lambda () (set! res (apply f testcase args))))))
-				       (cons res outstr))
-                    (c (exn unittest-assert-equal) 
-                       (begin
-                         (unittest/result-failed!
-                           result (cons testcase-name (get-condition-property c 'unittest-assert-equal 'comparison)))
-                         (cons witness no-outsrt)))
-                    (c (exn)
-                       (begin
-                         (unittest/result-failed!
-                           result (list testcase-name (call-with-output-string
-                                                        (lambda (port) (print-error-message c port)))))
-                         (cons witness no-outsrt)))
-                    (c () (begin
-                            (unittest/result-failed! result (list testcase-name c))
-                            (cons witness no-outsrt)))))
-	       (v (car pair))
-	       (outstr (cdr pair)))
+               (no-outsrt "")
+               (pair (condition-case (let* ((res (void))
+                                            (outstr (with-output-to-string (lambda () (set! res (apply f testcase args))))))
+                                       (cons res outstr))
+                       (c (exn unittest-assert-equal) 
+                          (begin
+                            (unittest/result-failed!
+                              result (cons testcase-name (get-condition-property c 'unittest-assert-equal 'comparison)))
+                            (cons witness no-outsrt)))
+                       (c (exn)
+                          (begin
+                            (unittest/result-failed!
+                              result (list testcase-name (call-with-output-string
+                                                           (lambda (port) (print-error-message c port)))))
+                            (cons witness no-outsrt)))
+                       (c () (begin
+                               (unittest/result-failed! result (list testcase-name c))
+                               (cons witness no-outsrt)))))
+               (v (car pair))
+               (outstr (cdr pair)))
           (when teardown (apply (car teardown) testcase args))
           `((h2 (code ,testcase-name)
                 ": " 
@@ -172,11 +174,11 @@
                      '(span (@ (class "w3-text-green")) pass)))
             ,@(if (pair? v) v '())
             (code/scheme ,code)
-	    ,@(if (not (equal? outstr no-outsrt)) 
-		`((div (@ (class "w3-container"))
-		       (p "Captured stdout:"
-		       (pre (code (@ (class "w3-code w3-round")) ,outstr)))))
-		'()))))))
+            ,@(if (not (equal? outstr no-outsrt)) 
+                  `((div (@ (class "w3-container"))
+                         (p "Captured stdout:"
+                            (pre (code (@ (class "w3-code w3-round")) ,outstr)))))
+                  '()))))))
 
   (define-syntax define-suite
     (syntax-rules ()
@@ -258,6 +260,7 @@
                              `(uncaught-condition ,c))))
 
   )
+
 
 
 
