@@ -172,7 +172,7 @@
                 ,(if (eq? v witness) 
                      '(span (@ (class "w3-text-red")) fail) 
                      '(span (@ (class "w3-text-green")) pass)))
-            ,@(if (pair? v) v '())
+            ,@(if (and (pair? v) (eq? (car v) 'doc)) (cdr v) '())
             (code/scheme ,code)
             ,@(if (not (equal? outstr no-outsrt)) 
                   `((div (@ (class "w3-container"))
@@ -256,20 +256,4 @@
          ((exn ...) (void)) ...
          ))))
 
-  #;(c () (signal (condition '(exn message "⊦⧳ uncaught condition.")
-                             `(uncaught-condition ,c))))
-
-  )
-
-
-
-
-
-
-
-
-
-
-
-
-
+)
