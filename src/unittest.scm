@@ -41,6 +41,7 @@
               (script "hljs.highlightAll();")
               (title ,title))
             (body (@ (class "w3-content") (style "max-width:61.8%"))
+		  (structure/toc)
                   ,@body
                   (hr)
                   (footer (@ (class "w3-container w3-center"))
@@ -61,74 +62,77 @@
                                (br)
                                (small ,(date->string (current-date))))))))))
 
-  (define sxml-handler-container (lambda (tag body) `(div (@ (class "w3-container")) ,@body)))
-
-  (define sxml-handler-code/lang
-    (lambda (tag body)
-      (let ((lang (car body))
-            (code (cdr body)))
-        `(div (@ (class "w3-card w3-round"))
-              (header (@ (class "w3-container w3-border w3-round w3-light-gray w3-right")) ,lang " code")
-              (pre (@ (class "w3-container"))
-                   (code (@ (class "w3-code w3-round language-" ,lang)) ,code))))))
-
-  (define sxml-handler-code/scheme
-    (lambda (tag body)
-      (let* ((expr (if (eq? (length body) 1) (car body) (cons 'begin body))))
-        (sxml-handler-code/lang 'code/lang (list 'scheme (call-with-output-string (lambda (p) (pretty-print expr p))))))))
-
-  (define sxml-handler-code/scheme-file
-    (lambda (tag body)
-      (sxml-handler-code/scheme 'code/scheme (list (with-input-from-file (car body) (lambda () (read)))))))
-
-  (define sxml-handler-di
-    (lambda (tag body)
-      (let ((dt (car body))
-            (dd (cdr body)))
-        `(div (@ (class "w3-row")) 
-              (dt (@ (class "w3-bold")) ,dt)
-              (dd ,@dd)))))
-
-  (define sxml-handler-cite/a (lambda (tag body) `(cite (a (@ (href ,(car body))) ,@(cdr body)))))
-
-  (define sxml-handler-math/display
-    (lambda (tag body)
-      `(math (@ (display "block")) ,@body)))
-
-  (define sxml-handler-math/frac
-    (lambda (tag body)
-      `(mfrac ,(car body) ,(cadr body))))
-
-  (define sxml-handler-math/m
-    (lambda (tag body)
-      (let ((v (car body)))
-        (cond
-          ((number? v) `(mn ,v))
-          ((symbol? v) `(mi ,v))
-          ((pair? v) `(mrow ,@(map (lambda (w) (sxml-handler-math/m 'm (list w))) v)))
-          (else `(mtext ,v))))))
-
-  (define conversion-rules* (append `((container . ,sxml-handler-container)
-                                      (code/lang . ,sxml-handler-code/lang)
-                                      (code/scheme . ,sxml-handler-code/scheme)
-                                      (code/scheme-file . ,sxml-handler-code/scheme-file)
-                                      (cite/a . ,sxml-handler-cite/a)
-                                      (displaymath . ,sxml-handler-math/display)
-                                      (m . ,sxml-handler-math/m)
-                                      (frac . ,sxml-handler-math/frac)
-                                      (di . ,sxml-handler-di))
-                                    alist-conv-rules*))
-
   (define (SXML->HTML->file! tree filename)
     (with-output-to-file (conc filename ".html")
       (lambda ()
-        (display "<!doctype html>")
-        (SRV:send-reply
-          (pre-post-order*
-            (pre-post-order*
-              tree
-              conversion-rules*)
-            universal-conversion-rules*)))))
+        (letrec ((sections '())
+		 (sxml-handler-container (lambda (tag body) `(div (@ (class "w3-container")) ,@body)))
+		 (sxml-handler-code/pre (lambda (tag body) `(pre (code (@ (class "w3-code w3-round")) ,@body))))
+		 (sxml-handler-code/lang (lambda (tag body)
+					   (let ((lang (car body))
+						 (code (cdr body)))
+					     `(div (@ (class "w3-card w3-round"))
+						   (header (@ (class "w3-container w3-border w3-round w3-light-gray w3-right")) ,lang " code")
+						   (pre (@ (class "w3-container"))
+							(code (@ (class "w3-code w3-round language-" ,lang)) ,code))))))
+		 (sxml-handler-code/scheme (lambda (tag body)
+					     (let* ((expr (if (eq? (length body) 1) (car body) (cons 'begin body))))
+					       (sxml-handler-code/lang 
+						 'code/lang 
+						 (list 'scheme (call-with-output-string 
+								 (lambda (p) (pretty-print expr p))))))))
+		 (sxml-handler-code/scheme-file (lambda (tag body)
+						  (sxml-handler-code/scheme 'code/scheme 
+									    (list (with-input-from-file (car body) (lambda () (read)))))))
+		 (sxml-handler-di (lambda (tag body)
+				    (let ((dt (car body))
+					  (dd (cdr body)))
+				      `(div (@ (class "w3-row")) 
+					    (dt (@ (class "w3-bold")) ,dt)
+					    (dd ,@dd)))))
+		 (sxml-handler-structure/section (lambda (tag body)
+						   (let* ((witness (gensym 'section))
+							  (i (if (null? sections) 0 (caar sections)))
+							  (nexti (add1 i)))
+						     (set! sections (cons (list nexti witness body) sections))
+						     `(section (@ (id ,witness)) (header (h1 ,nexti ". ",@body))))))
+		 (sxml-handler-structure/toc (lambda (tag body)
+					       `(div (@ (class "w3-header"))
+						  (p (b "Table of contents:"))
+						  (ol ,@(map (lambda (each) `(li (a (@ (href "#" ,(cadr each))) ,@(caddr each))))
+							     (reverse sections))))))
+		 (sxml-handler-cite/a (lambda (tag body) `(cite (a (@ (href ,(car body))) ,@(cdr body)))))
+		 (sxml-handler-math/display (lambda (tag body) `(math (@ (display "block")) ,@body)))
+		 (sxml-handler-math/frac (lambda (tag body) `(mfrac ,(sxml-handler-math/m 'm (list (car body))) 
+								    ,(sxml-handler-math/m 'm (list (cadr body))))))
+		 (sxml-handler-math/m (lambda (tag body)
+					(let ((v (car body)))
+					  (cond
+					    ((rational? v) (sxml-handler-math/frac 'frac (list (numerator v) (denominator v))))
+					    ((number? v) `(mn ,v))
+					    ((symbol? v) `(mi ,v))
+					    ((pair? v) `(mrow ,@(map (lambda (w) (sxml-handler-math/m 'm (list w))) v)))
+					    (else `(mtext ,v)))))))
+	  (display "<!doctype html>")
+	  (SRV:send-reply
+	    (pre-post-order*
+	      (pre-post-order*
+		(pre-post-order*
+		  tree
+		  (append `((container . ,sxml-handler-container)
+			    (code/lang . ,sxml-handler-code/lang)
+			    (code/pre . ,sxml-handler-code/pre)
+			    (code/scheme . ,sxml-handler-code/scheme)
+			    (code/scheme-file . ,sxml-handler-code/scheme-file)
+			    (cite/a . ,sxml-handler-cite/a)
+			    (structure/section . ,sxml-handler-structure/section)
+			    (displaymath . ,sxml-handler-math/display)
+			    (m . ,sxml-handler-math/m)
+			    (frac . ,sxml-handler-math/frac)
+			    (di . ,sxml-handler-di))
+			  alist-conv-rules*))
+		(cons `(structure/toc . ,sxml-handler-structure/toc) alist-conv-rules*))
+	      universal-conversion-rules*))))))
 
   (define-record unittest/testcase name log)
 
@@ -166,20 +170,19 @@
                                (cons witness no-outsrt)))))
                (v (car pair))
                (outstr (cdr pair))
-	       (hasdoc (and (pair? v) (eq? (car v) 'doc))))
-          (when teardown (apply (car teardown) testcase args))
-          `((h2 (code ,testcase-name)
-                ": " 
-                ,(if (eq? v witness) 
-                     '(span (@ (class "w3-text-red")) fail) 
-                     '(span (@ (class "w3-text-green")) pass)))
-            ,@(if hasdoc (cdr v) '())
-            (code/scheme ,(if hasdoc (butlast code) code))
-            ,@(if (not (equal? outstr no-outsrt)) 
-                  `((div (@ (class "w3-container"))
-                         (p "Captured stdout:"
-                            (pre (code (@ (class "w3-code w3-round")) ,outstr)))))
-                  '()))))))
+               (hasdoc (and (pair? v) (eq? (car v) 'doc))))
+	  (when teardown (apply (car teardown) testcase args))
+	  `((structure/section (code ,testcase-name)
+			       ": " 
+			       ,(if (eq? v witness) 
+				  '(span (@ (class "w3-text-red")) fail) 
+				  '(span (@ (class "w3-text-green")) pass)))
+	    ,@(if hasdoc (cdr v) '())
+	    (code/scheme ,(if hasdoc (butlast code) code))
+	    ,@(if (not (equal? outstr no-outsrt)) 
+		`((p "Captured stdout:")
+		  (code/pre ,outstr))
+		'()))))))
 
   (define-syntax define-suite
     (syntax-rules ()
@@ -257,4 +260,5 @@
          ((exn ...) (void)) ...
          ))))
 
-)
+  )
+
