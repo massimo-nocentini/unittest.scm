@@ -103,8 +103,7 @@
 							     (reverse sections))))))
 		 (sxml-handler-cite/a (lambda (tag body) `(cite (a (@ (href ,(car body))) ,@(cdr body)))))
 		 (sxml-handler-math/display (lambda (tag body) `(math (@ (display "block")) ,@body)))
-		 (sxml-handler-math/frac (lambda (tag body) `(mfrac ,(sxml-handler-math/m 'm (list (car body))) 
-								    ,(sxml-handler-math/m 'm (list (cadr body))))))
+		 (sxml-handler-math/frac (lambda (tag body) `(mfrac ,(car body) ,(cadr body))))
 		 (sxml-handler-math/m (lambda (tag body)
 					(let ((v (car body)))
 					  (cond
