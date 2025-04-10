@@ -31,8 +31,8 @@
                 (link (@ (rel "stylesheet") 
                          (href "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/styles/default.min.css") 
                          (type "text/css")))
-                (style "code, pre, tt, kbd, samp, .w3-code { font-family: w3-monospace; }"
-                       "html, body, h1, h2, h3, h4, h5, h6 { font-family: w3-serif; }")
+                (style "code, pre, tt, kbd, samp, .w3-code { font-family: monospace; }"
+                       "html, body, h1, h2, h3, h4, h5, h6 { font-family: serif; }")
                 (script (@ (src "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/highlight.min.js")))
                 ,@(map (lambda (lang) 
                          `(script (@ (src "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/languages/" ,lang ".min.js")))) 
@@ -42,10 +42,9 @@
               (body (@ (class "w3-content") (style "max-width:61.8%"))
                     (header (@ (class "w3-container w3-center"))
                             (h1 (b ,maintitle))
-                            (br)
                             (p ,@abstract)
-                            (br)
                             (small
+			      (small (p ,(date->string (current-date))))
                               (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/"))
                                  (img (@ (alt "Creative Commons License") (style "border-width:0")
                                          (src "https://mirrors.creativecommons.org/presskit/icons/cc.svg"))))
@@ -55,18 +54,13 @@
                               (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/"))
                                  (img (@ (alt "Creative Commons License") (style "border-width:0")
                                          (src "https://mirrors.creativecommons.org/presskit/icons/sa.svg"))))
-                              (br)
                               (p "This work is licensed under a "
                                  (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/")) 
-                                    "Creative Commons Attribution-ShareAlike 4.0 International License")
-                                 (br)
-                                 (small ,(date->string (current-date))))))
+                                    "Creative Commons Attribution-ShareAlike 4.0 International License"))))
                     (structure/toc)
                     ,@body
                     (hr)
-                    (structure/citations) 
-                    (hr)
-                    )))))
+                    (structure/citations))))))
 
   (define (SXML->HTML->file! tree filename)
     (with-output-to-file (conc filename ".html")
