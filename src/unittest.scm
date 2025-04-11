@@ -8,6 +8,7 @@
     (chicken pretty-print) 
     (chicken port) 
     (chicken string) 
+    (chicken syntax) 
     srfi-1 
     srfi-19
     sxml-transforms)
@@ -58,8 +59,8 @@
                                  (a (@ (rel "license") (href "http://creativecommons.org/licenses/by-sa/4.0/")) 
                                     "Creative Commons Attribution-ShareAlike 4.0 International License"))))
                     (structure/toc)
+		    (hr)
                     ,@body
-                    (hr)
                     (structure/citations))))))
 
   (define (SXML->HTML->file! tree filename)
@@ -76,6 +77,9 @@
                                                    (header (@ (class "w3-container w3-border w3-round w3-light-gray w3-right")) ,lang " code")
                                                    (pre (@ (class "w3-container"))
                                                         (code (@ (class "w3-code w3-round language-" ,lang)) ,code))))))
+                 (sxml-handler-code/scheme/expand (lambda (tag body)
+						    (sxml-handler-code/scheme 'code/scheme 
+									      (map (lambda (expr) (strip-syntax (expand expr))) body))))
                  (sxml-handler-code/scheme (lambda (tag body)
                                              (let* ((expr (if (eq? (length body) 1) (car body) (cons 'begin body))))
                                                (sxml-handler-code/lang
@@ -103,14 +107,17 @@
                                                      (ol ,@(map (lambda (each) `(li (a (@ (href "#" ,(cadr each))) ,@(caddr each))))
                                                              (reverse sections))))))
                  (sxml-handler-structure/citations (lambda (tag body)
-                                                     `(div (@ (class "w3-container"))
-                                                           (header (b "References"))
-                                                           (ul ,@(map (lambda (tuple)
-                                                                        (let ((href (third tuple))
-                                                                              (rest (fourth tuple)))
-                                                                          `(li (@ (id ,(second tuple))) "[" ,(first tuple) "] "
-                                                                               (a (@ (href ,href)) ,@(if (null? rest) (list href) rest)))))
-                                                                   (reverse citations))))))
+						     (if (null? citations)
+						       '()
+						       `((hr)
+							 (div (@ (class "w3-container"))
+							     (header (b "References"))
+							     (ul ,@(map (lambda (tuple)
+									  (let ((href (third tuple))
+										(rest (fourth tuple)))
+									    `(li (@ (id ,(second tuple))) "[" ,(first tuple) "] "
+										 (a (@ (href ,href)) ,@(if (null? rest) (list href) rest)))))
+									(reverse citations))))))))
                  (sxml-handler-cite/a (lambda (tag body) 
                                         (let* ((i (if (null? citations) 0 (caar citations)))
                                                (nexti (add1 i))
@@ -147,6 +154,7 @@
                             (code/lang . ,sxml-handler-code/lang)
                             (code/pre . ,sxml-handler-code/pre)
                             (code/scheme . ,sxml-handler-code/scheme)
+                            (code/scheme/expand . ,sxml-handler-code/scheme/expand)
                             (code/scheme-file . ,sxml-handler-code/scheme-file)
                             (cite/a . ,sxml-handler-cite/a)
                             (cite/quote . ,sxml-handler-cite/quote)
@@ -267,10 +275,9 @@
             (res (unittest/result-summary r))
             (sxml (alist-ref 'doc sut-methods)))
         (SXML->HTML->file! (sxml-tree sut-name 
-                                      `((h1 (code ,sut-name) " test suite") 
-                                        (code/scheme ,res)
+                                      `((p (b "Tests summary")
+					   (code/scheme ,res))
                                         ,@(if sxml ((car sxml) r) '())
-                                        (hr)
                                         ,@docs))
                            (symbol-append 'testsuite- sut-name))
         (pretty-print res)
