@@ -32,8 +32,8 @@
                 (link (@ (rel "stylesheet") 
                          (href "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/styles/default.min.css") 
                          (type "text/css")))
-                (style "code, pre, tt, kbd, samp, .w3-code { font-family: Ubuntu Mono, Monaco, monospace; }"
-                       "html, body, h1, h2, h3, h4, h5, h6 { font-family: Ubuntu, Lucida Sans, serif; }")
+                (style "code, pre, tt, kbd, samp, .w3-code { font-family: Roboto Mono, Ubuntu Mono, Monaco, monospace; }"
+                       "html, body, h1, h2, h3, h4, h5, h6 { font-family: Georgia, Times New Roman, Lucida Sans, serif; }")
                 (script (@ (src "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/highlight.min.js")))
                 ,@(map (lambda (lang) 
                          `(script (@ (src "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/languages/" ,lang ".min.js")))) 
@@ -132,7 +132,7 @@
                  (sxml-handler-cite/quote (lambda (tag body) 
 					    (let ((author (car body))
 						  (quotation (cdr body)))
-					`(blockquote (@ (class "w3-panel w3-leftbar w3-round") (style "max-width:61.8%"))
+					`(blockquote (@ (class "w3-panel w3-leftbar w3-round w3-border") (style "max-width:61.8%"))
 						(span (@ (style "font-size:261%;opacity:0.2")) (& "#10077"))
 						(br)
 						(i ,@quotation)
