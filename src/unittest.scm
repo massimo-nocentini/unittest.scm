@@ -32,7 +32,7 @@
                 (link (@ (rel "stylesheet") 
                          (href "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/styles/default.min.css") 
                          (type "text/css")))
-                (style "code, pre, tt, kbd, samp, .w3-code { font-family: Roboto Mono, Ubuntu Mono, Monaco, monospace; }"
+                (style "code, pre, tt, kbd, samp, .w3-code, .w3-codespan { font-family: Roboto Mono, Ubuntu Mono, Monaco, monospace; }"
                        "html, body, h1, h2, h3, h4, h5, h6 { font-family: Georgia, Times New Roman, Lucida Sans, serif; }")
                 (script (@ (src "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/highlight.min.js")))
                 ,@(map (lambda (lang) 
