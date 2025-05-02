@@ -9,6 +9,7 @@
     (chicken port) 
     (chicken string) 
     (chicken syntax) 
+    (chicken flonum) 
     srfi-1 
     srfi-19
     sxml-transforms)
@@ -87,7 +88,7 @@
                                                  'code/lang 
                                                  (list 'scheme (call-with-output-string
                                                                  (lambda (p) (pretty-print expr p))))))))
-                 (sxml-handler-code/scheme-file (lambda (tag body)
+                 (sxml-handler-code/scheme/file (lambda (tag body)
                                                   (sxml-handler-code/scheme 'code/scheme 
                                                                             (list (with-input-from-file (car body) (lambda () (read)))))))
                  (sxml-handler-di (lambda (tag body)
@@ -159,7 +160,7 @@
                             (code/pre . ,sxml-handler-code/pre)
                             (code/scheme . ,sxml-handler-code/scheme)
                             (code/scheme/expand . ,sxml-handler-code/scheme/expand)
-                            (code/scheme-file . ,sxml-handler-code/scheme-file)
+                            (code/scheme/file . ,sxml-handler-code/scheme/file)
                             (cite/a . ,sxml-handler-cite/a)
                             (cite/quote . ,sxml-handler-cite/quote)
                             (structure/section . ,sxml-handler-structure/section)
@@ -247,8 +248,16 @@
   (define (unittest/result-failed! result exn)
     (unittest/result-failed-set! result (cons exn (unittest/result-failed result))))
 
+  (define (equal-approx? p) 
+    (letrec ((? (lambda (a b)
+		  (cond
+		    ((and (real? a) (real? b)) (< (abs (- a b)) p))
+		    ((and (pair? a) (pair? b)) (and (? (car a) (car b)) (? (cdr a) (cdr b))))
+		    (else (equal=? a b))))))
+      ?))
+
   (define (⊦ pred? a b) (unless (pred? a b) (signal (unittest/condition-expected-actual a b))))
-  (define (⊦= a b) (⊦ equal? a b))
+  (define (⊦= a b) (⊦ (equal-approx? 0.000001) a b))
   (define (⊦≠ a b) (⊦ (complement equal?) a b))
   (define (⊨ a) (⊦= #t a))
   (define (⊭ a) (⊦= #f a))
