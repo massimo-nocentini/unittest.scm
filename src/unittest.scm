@@ -10,6 +10,8 @@
     (chicken string) 
     (chicken syntax) 
     (chicken flonum) 
+    (chicken time) 
+    (chicken gc) 
     srfi-1 
     srfi-19
     sxml-transforms)
@@ -199,25 +201,35 @@
                    ((f code) (apply values (alist-ref testcase-name methods))))
         (let* ((witness (gensym))
                (no-outsrt "")
+	       (eta-time 0)
                (pair (condition-case (let* ((res (void))
-                                            (outstr (with-output-to-string (lambda () (set! res (apply f testcase args))))))
-                                       (cons res outstr))
+					    (outstr no-outsrt)
+                                            (errstr (with-error-output-to-string 
+						      (lambda ()
+							(set! outstr (with-output-to-string 
+								       (lambda () 
+									 (let-values (((u s) (cpu-time)))
+									   (set! res (apply f testcase args))
+									   (let-values (((uu ss) (cpu-time)))
+									     (set! eta-time (- (+ uu ss) (+ u s))))))))))))
+                                       (list res outstr errstr))
                        (c (exn unittest-assert-equal) 
                           (begin
                             (unittest/result-failed!
                               result (cons testcase-name (get-condition-property c 'unittest-assert-equal 'comparison)))
-                            (cons witness no-outsrt)))
+                            (list witness no-outsrt no-outsrt)))
                        (c (exn)
                           (begin
                             (unittest/result-failed!
                               result (list testcase-name (call-with-output-string
                                                            (lambda (port) (print-error-message c port)))))
-                            (cons witness no-outsrt)))
+                            (list witness no-outsrt no-outsrt)))
                        (c () (begin
                                (unittest/result-failed! result (list testcase-name c))
-                               (cons witness no-outsrt)))))
-               (v (car pair))
-               (outstr (cdr pair))
+                               (list witness no-outsrt no-outsrt)))))
+               (v (first pair))
+               (outstr (second pair))
+               (errstr (third pair))
                (hasdoc (and (pair? v) (eq? (car v) 'doc))))
           (when teardown (apply (car teardown) testcase args))
           `((structure/section (code ,testcase-name)
@@ -227,10 +239,10 @@
                                     '(span (@ (class "w3-text-green")) pass)))
             ,@(if hasdoc (cdr v) '())
             (code/scheme ,(if hasdoc (butlast code) code))
-            ,@(if (not (equal? outstr no-outsrt)) 
-                  `((p "Captured stdout:")
-                    (code/pre ,outstr))
-                  '()))))))
+            (code/scheme ((eta ,(exact->inexact (/ eta-time 1000)))
+			  (memory ,(memory-statistics))
+			  (stdout ,outstr)
+			  (stderr ,errstr))))))))
 
   (define-syntax define-suite
     (syntax-rules ()
