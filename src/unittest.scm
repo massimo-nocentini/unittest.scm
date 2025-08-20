@@ -30,14 +30,14 @@
                          (href "https://www.w3schools.com/w3css/5/w3.css") 
                          (type "text/css")))
                 (link (@ (rel "stylesheet") 
-                           (href "https://fonts.googleapis.com/css?family=Georgia") 
+                           (href "https://fonts.googleapis.com/css?family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&family=Playfair:ital,opsz,wght@0,5..1200,300..900;1,5..1200,300..900&display=swap") 
                            (type "text/css")))
                 (link (@ (rel "stylesheet") 
                          (href "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/styles/default.min.css") 
                          (type "text/css")))
                 (style "code, pre, tt, kbd, samp, .w3-code, .w3-codespan { font-family: Monaco, Lucida Console, Roboto Mono, Ubuntu Mono, monospace; }"
 		       "math { font-family: Euler Math; }"
-                       "html, body, h1, h2, h3, h4, h5, h6 { font-family: Georgia, Lucida Sans, Times New Roman, serif; }")
+                       "html, body, h1, h2, h3, h4, h5, h6 { font-family: Merriweather, Lucida Sans, Times New Roman, serif; }")
                 (script (@ (src "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/highlight.min.js")))
                 ,@(map (lambda (lang) 
                          `(script (@ (src "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/" ,highlight-version "/languages/" ,lang ".min.js")))) 
