@@ -21,13 +21,13 @@
   ((test/c-apply _) 
    (let ((witness (gensym))
          (my-strlen (foreign-safe-lambda* scheme-object ((scheme-object f)) 
-					  #<<END
+                                          #<<END
 					  C_word res;
 					  int s = CHICKEN_apply(f, C_SCHEME_END_OF_LIST, &res);
 					  printf("code: %d\n", s);
 					  C_return (res);
 END
-					  )))
+                                          )))
      (⊦= witness (car (my-strlen (lambda () (list witness 4)))))))
 
   ((test-null-eq? _) (⊨ (eq? '() '())))
@@ -35,4 +35,5 @@ END
   )
 
 (unittest/✓ learning-suite)
+
 
